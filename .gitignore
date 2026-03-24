@@ -1,0 +1,28 @@
+# Secrets
+secrets.enc
+*.age
+.env
+
+# Databases
+data/*.db
+
+# Logs
+logs/
+
+# Temp
+/tmp/
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+
+# Generated
+CLAUDE.md
+
+# User data (committed by user choice, not by default)
+memory/learning/signals/ratings.jsonl
+memory/learning/failures/

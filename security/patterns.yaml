@@ -1,0 +1,71 @@
+version: "1.0"
+philosophy:
+  mode: "balanced"
+  principle: "Block catastrophic, confirm destructive, allow everything else"
+
+bash:
+  trusted:
+    - pattern: "^(git status|git log|git diff|git branch|ls|pwd|echo|cat |head |tail |wc )"
+      reason: "Safe read-only commands"
+  blocked:
+    - pattern: "rm -rf /"
+      reason: "Filesystem destruction"
+    - pattern: ":(){ :|:& };:"
+      reason: "Fork bomb"
+    - pattern: "mkfs\\."
+      reason: "Filesystem format"
+    - pattern: "dd if=/dev/(zero|random|urandom) of=/dev/sd"
+      reason: "Disk overwrite"
+    - pattern: "chmod 777"
+      reason: "World-writable permissions"
+    - pattern: "echo \\$.*(_KEY|_TOKEN|_SECRET|_PASSWORD)"
+      reason: "Secret exposure via echo"
+    - pattern: "cat.*\\.vault-token"
+      reason: "Vault token exposure"
+    - pattern: "printf.*\\$(.*_KEY|.*_TOKEN)"
+      reason: "Secret exposure via printf"
+    - pattern: "curl.*-d.*\\$.*(_KEY|_TOKEN|_SECRET)"
+      reason: "Secret exfiltration via curl"
+  confirm:
+    - pattern: "git push --force"
+      reason: "Force push can destroy remote history"
+    - pattern: "git push -f"
+      reason: "Force push can destroy remote history"
+    - pattern: "git reset --hard"
+      reason: "Discards uncommitted changes"
+    - pattern: "git clean -fd"
+      reason: "Deletes untracked files permanently"
+    - pattern: "rm -rf ~"
+      reason: "Home directory deletion"
+    - pattern: "DROP (TABLE|DATABASE)"
+      reason: "Database destruction"
+    - pattern: "systemctl (stop|disable)"
+      reason: "Service disruption"
+    - pattern: "(reboot|shutdown|poweroff)"
+      reason: "System shutdown"
+  alert:
+    - pattern: "sudo "
+      reason: "Elevated privileges"
+    - pattern: "npm publish"
+      reason: "Package publication"
+
+paths:
+  zeroAccess:
+    - "~/.ssh/id_*"
+    - "~/.ssh/*.pem"
+    - "~/.gnupg/private*"
+    - "~/.aws/credentials"
+    - "~/.config/poseidon/age-key.txt"
+  readOnly:
+    - "/etc/passwd"
+    - "/etc/shadow"
+    - "/etc/sudoers"
+  confirmWrite:
+    - "~/.bashrc"
+    - "~/.zshrc"
+    - "~/.profile"
+    - "*/settings.json"
+  noDelete:
+    - "~/.poseidon/telos/*"
+    - "~/.poseidon/memory/projects/*/GOALS.md"
+    - "~/.poseidon/memory/projects/*/DECISIONS.md"

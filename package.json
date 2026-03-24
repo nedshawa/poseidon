@@ -1,0 +1,13 @@
+{
+  "name": "poseidon",
+  "version": "1.0.0",
+  "description": "Personal AI Infrastructure for Claude Code",
+  "scripts": {
+    "init": "bun tools/init.ts",
+    "rebuild": "bun tools/rebuild.ts",
+    "secret": "bun tools/secret.ts"
+  },
+  "bin": {
+    "poseidon": "tools/init.ts"
+  }
+}
