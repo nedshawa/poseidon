@@ -10,7 +10,7 @@
  */
 import { execSync } from "child_process";
 import { readFileSync, writeFileSync, chmodSync, unlinkSync, existsSync, mkdirSync } from "fs";
-import { join } from "path";
+import { join, dirname } from "path";
 import { homedir } from "os";
 import { randomBytes } from "crypto";
 import { poseidonPath, getSettingsPath } from "../lib/paths";
@@ -22,10 +22,12 @@ export interface SecretBackend {
 }
 
 /** Determine staging directory — prefer /dev/shm, fall back to /tmp */
+let _stagingDir: string | null = null;
 function getStagingDir(): string {
-  if (existsSync("/dev/shm")) return "/dev/shm";
+  if (_stagingDir) return _stagingDir;
+  if (existsSync("/dev/shm")) return (_stagingDir = "/dev/shm");
   console.error("[SecretClient] WARNING: /dev/shm not available, falling back to /tmp (less secure)");
-  return "/tmp";
+  return (_stagingDir = "/tmp");
 }
 
 function stagingFile(): string {
@@ -89,7 +91,7 @@ export class EncryptedFileBackend implements SecretBackend {
       const keyContent = readFileSync(this.ageKeyPath, "utf8");
       const pubKeyMatch = keyContent.match(/public key: (age1[a-z0-9]+)/);
       if (!pubKeyMatch) throw new Error("Could not extract public key from age key file");
-      const encDir = join(this.encryptedFilePath, "..");
+      const encDir = dirname(this.encryptedFilePath);
       if (!existsSync(encDir)) mkdirSync(encDir, { recursive: true });
       execSync(
         `age --encrypt -r "${pubKeyMatch[1]}" -o "${this.encryptedFilePath}" "${tmp}"`,
@@ -148,7 +150,7 @@ export class EnvFileBackend implements SecretBackend {
   }
 
   private writeEnv(data: Record<string, string>): void {
-    const dir = join(this.envPath, "..");
+    const dir = dirname(this.envPath);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     const lines = Object.entries(data).map(([k, v]) => `${k}=${v}`);
     writeFileSync(this.envPath, lines.join("\n") + "\n", { mode: 0o600 });

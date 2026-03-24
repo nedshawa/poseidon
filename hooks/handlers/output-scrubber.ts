@@ -13,9 +13,10 @@ import { getSettingsPath } from "../lib/paths";
 
 // ── Pattern-to-label mapping ───────────────────────────
 
+// Order matters: more specific patterns first (sk-ant before sk-)
 const PATTERN_LABELS: Record<string, string> = {
-  "sk-[a-zA-Z0-9]{20,}": "[REDACTED-OPENAI]",
   "sk-ant-[a-zA-Z0-9\\-]{20,}": "[REDACTED-ANTHROPIC]",
+  "sk-[a-zA-Z0-9]{20,}": "[REDACTED-OPENAI]",
   "ghp_[a-zA-Z0-9]{36}": "[REDACTED-GITHUB]",
   "AKIA[0-9A-Z]{16}": "[REDACTED-AWS]",
   "Bearer [a-zA-Z0-9\\-._~+/]+=*": "[REDACTED-BEARER]",

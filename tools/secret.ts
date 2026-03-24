@@ -13,10 +13,10 @@
  */
 
 import { execSync } from "child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync, chmodSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, chmodSync } from "fs";
 import { join, dirname } from "path";
 import { homedir } from "os";
-import { SecretClient, EncryptedFileBackend } from "../hooks/handlers/secret-client";
+import { SecretClient } from "../hooks/handlers/secret-client";
 import { poseidonPath, getSettingsPath } from "../hooks/lib/paths";
 
 function loadSettings(): Record<string, any> {
