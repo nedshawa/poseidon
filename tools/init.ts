@@ -325,6 +325,12 @@ interface Telos {
 async function stepTelos(): Promise<Telos> {
   printStep(2, 6, "Mission (TELOS)");
 
+  const setupTelos = await askYesNo("Set up your mission and goals now?", false);
+  if (!setupTelos) {
+    console.log("    Skipping — edit telos/ files later when ready.");
+    return { mission: "", goals: [] };
+  }
+
   const mission = await ask("In one sentence, what are you working toward?");
 
   console.log("    What are your top 3 goals right now?");
@@ -332,10 +338,6 @@ async function stepTelos(): Promise<Telos> {
   for (let i = 1; i <= 3; i++) {
     const goal = await ask(`  ${i}`);
     if (goal) goals.push(goal);
-  }
-
-  if (!mission && goals.length === 0) {
-    console.log("    (You can fill in telos/ files later — skipping for now)");
   }
 
   return { mission, goals };
@@ -789,15 +791,39 @@ async function main(): Promise<void> {
   const installDir = await ask("Install location", defaultDir);
 
   if (existsSync(join(installDir, "settings.json"))) {
-    const overwrite = await askYesNo(
-      "Poseidon is already installed there. Overwrite?",
-      false
-    );
-    if (!overwrite) {
-      console.log("    Cancelled. Existing installation preserved.");
+    console.log("    Poseidon is already installed there.\n");
+    console.log("    Options:");
+    console.log("      1. Full reinstall (overwrite everything)");
+    console.log("      2. Add/update API keys only");
+    console.log("      3. Cancel\n");
+    const choice = await ask("Choose (1/2/3)", "2");
+
+    if (choice === "3" || choice === "cancel") {
+      console.log("    Cancelled.");
       rl.close();
       return;
     }
+
+    if (choice === "2") {
+      // Just run API key setup on existing install
+      const setupScript = join(installDir, "tools", "setup.ts");
+      if (existsSync(setupScript)) {
+        try {
+          rl.close(); // Close readline so setup.ts can use terminal
+          execSync(`POSEIDON_DIR="${installDir}" bun "${setupScript}"`, {
+            stdio: "inherit",
+            cwd: installDir,
+          });
+        } catch {
+          console.log("    Key setup interrupted.");
+        }
+      } else {
+        console.log("    setup.ts not found. Run a full reinstall first.");
+      }
+      return;
+    }
+
+    // choice === "1" — full reinstall, continue below
   }
 
   try {
