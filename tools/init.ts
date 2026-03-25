@@ -468,20 +468,11 @@ interface CollectedKey {
   value: string;
 }
 
-function readSecretTerminal(prompt: string): string {
-  process.stdout.write(`      ${prompt}: `);
-  try { execSync("stty -echo < /dev/tty 2>/dev/null", { stdio: "ignore" }); } catch {}
-  const result = spawnSync("bash", ["-c", 'read -r LINE < /dev/tty && echo -n "$LINE"'], {
-    stdio: ["pipe", "pipe", "inherit"],
-  });
-  try { execSync("stty echo < /dev/tty 2>/dev/null", { stdio: "ignore" }); } catch {}
-  const val = result.stdout?.toString().trim() || "";
-  if (val) {
-    process.stdout.write("••••••••••••••••\n");
-  } else {
-    process.stdout.write("(skipped)\n");
-  }
-  return val;
+async function readSecretTerminal(prompt: string): Promise<string> {
+  // Use the same readline that works for all other installer prompts
+  // Key is visible briefly but this is the only approach that doesn't hang
+  const val = await ask(`    ${prompt} (Enter to skip)`);
+  return val.trim();
 }
 
 async function stepCapabilities(): Promise<CollectedKey[]> {
@@ -516,7 +507,7 @@ async function stepCapabilities(): Promise<CollectedKey[]> {
     const add = await askYesNo(`    Add ${svc.name} API key?`, false);
     if (add) {
       console.log(`      Get key: ${svc.docs}`);
-      const val = readSecretTerminal(`${svc.name} API key`);
+      const val = await readSecretTerminal(`${svc.name} API key`);
       if (val) keys.push({ service: svc.id, field: svc.field, value: val });
     }
   }
@@ -532,7 +523,7 @@ async function stepCapabilities(): Promise<CollectedKey[]> {
     const add = await askYesNo(`    Add ${svc.name} API key?`, false);
     if (add) {
       console.log(`      Get key: ${svc.docs}`);
-      const val = readSecretTerminal(`${svc.name} API key`);
+      const val = await readSecretTerminal(`${svc.name} API key`);
       if (val) keys.push({ service: svc.id, field: svc.field, value: val });
     }
   }
@@ -548,7 +539,7 @@ async function stepCapabilities(): Promise<CollectedKey[]> {
     const add = await askYesNo(`    Add ${svc.name} API key?`, false);
     if (add) {
       console.log(`      Get key: ${svc.docs}`);
-      const val = readSecretTerminal(`${svc.name} API key`);
+      const val = await readSecretTerminal(`${svc.name} API key`);
       if (val) keys.push({ service: svc.id, field: svc.field, value: val });
     }
   }
@@ -563,7 +554,7 @@ async function stepCapabilities(): Promise<CollectedKey[]> {
     const add = await askYesNo(`    Add ${svc.name} API key?`, false);
     if (add) {
       console.log(`      Get key: ${svc.docs}`);
-      const val = readSecretTerminal(`${svc.name} API key`);
+      const val = await readSecretTerminal(`${svc.name} API key`);
       if (val) keys.push({ service: svc.id, field: svc.field, value: val });
     }
   }
@@ -579,7 +570,7 @@ async function stepCapabilities(): Promise<CollectedKey[]> {
     const add = await askYesNo(`    Add ${svc.name}?`, false);
     if (add) {
       console.log(`      Get key: ${svc.docs}`);
-      const val = readSecretTerminal(svc.name);
+      const val = await readSecretTerminal(svc.name);
       if (val) keys.push({ service: svc.id, field: svc.field, value: val });
     }
   }
