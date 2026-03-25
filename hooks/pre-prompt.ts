@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// pre-prompt.ts — Mode classification and project context per prompt
+// pre-prompt.ts — Complexity scoring, auto-escalation, project context, mistake injection
 // TRIGGER: UserPromptSubmit
 
 import { readHookInput } from "./lib/hook-io";
@@ -7,45 +7,9 @@ import type { HookInput } from "./lib/hook-io";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { getSettingsPath, poseidonPath, PROJECTS_DIR } from "./lib/paths";
+import { scoreComplexity, stripModeFlag } from "./handlers/complexity-scorer";
+import type { ComplexityResult } from "./handlers/complexity-scorer";
 import { getRelevantMistakes } from "./handlers/mistake-injector";
-
-// Mode classification patterns
-const MINIMAL_PATTERNS = [
-  /^\s*(hi|hello|hey|thanks|thank you|ok|okay|yes|no|sure|got it|nice|cool|great|good|yep|nope|ack)\s*[.!]?\s*$/i,
-  /^\s*\d{1,2}\s*$/, // ratings 1-10
-  /^\s*(rate|rating):?\s*\d{1,2}\s*$/i,
-];
-
-const ALGORITHM_KEYWORDS = [
-  "build", "create", "research", "investigate", "design", "refactor",
-  "fix", "implement", "deploy", "audit", "analyze", "architect",
-  "migrate", "debug", "troubleshoot", "optimize", "write",
-];
-
-function classifyMode(prompt: string): "MINIMAL" | "ALGORITHM" | "NATIVE" {
-  const trimmed = prompt.trim();
-
-  // MINIMAL: greetings, ratings, single-word acknowledgments
-  if (MINIMAL_PATTERNS.some((p) => p.test(trimmed))) return "MINIMAL";
-  if (trimmed.split(/\s+/).length <= 2 && trimmed.length < 20) return "MINIMAL";
-
-  // ALGORITHM: complex tasks
-  const lower = trimmed.toLowerCase();
-
-  // Multi-sentence or long prompts suggest complexity
-  const sentences = trimmed.split(/[.!?]+/).filter((s) => s.trim().length > 0);
-  if (sentences.length >= 3) return "ALGORITHM";
-
-  // References to files/code
-  if (/\.(ts|js|py|yaml|json|md|rs|go|sh)\b/.test(lower)) return "ALGORITHM";
-  if (/```/.test(trimmed)) return "ALGORITHM";
-
-  // Algorithm keywords
-  if (ALGORITHM_KEYWORDS.some((kw) => lower.includes(kw))) return "ALGORITHM";
-
-  // Everything else
-  return "NATIVE";
-}
 
 function loadActiveProject(): { id: string; context: string } | null {
   try {
@@ -74,19 +38,39 @@ function loadActiveProject(): { id: string; context: string } | null {
   }
 }
 
+function formatEscalation(result: ComplexityResult): string {
+  if (!result.escalated) return "";
+  return `\n⚡ Escalated to Algorithm (complexity: ${result.score}, signals: ${result.signals.join(", ")})`;
+}
+
 async function main() {
   try {
     const input = await readHookInput();
-    const prompt = input.prompt || "";
+    const rawPrompt = input.prompt || "";
 
-    if (!prompt.trim()) return;
+    if (!rawPrompt.trim()) return;
 
-    const mode = classifyMode(prompt);
-    const parts: string[] = [`Mode: ${mode}`];
+    // Strip mode flags before scoring (flags are handled inside scorer)
+    const prompt = stripModeFlag(rawPrompt);
+
+    // Load project context to pass to scorer
+    const project = loadActiveProject();
+
+    // Score complexity
+    const result = scoreComplexity(rawPrompt, {
+      activeProject: project?.id ?? undefined,
+    });
+
+    const parts: string[] = [
+      `Mode: ${result.mode} (score: ${result.score}, signals: [${result.signals.join(", ")}])`,
+    ];
+
+    // Escalation notice
+    const escalation = formatEscalation(result);
+    if (escalation) parts.push(escalation.trim());
 
     // Load project context for non-minimal prompts
-    if (mode !== "MINIMAL") {
-      const project = loadActiveProject();
+    if (result.mode !== "MINIMAL") {
       if (project?.context) {
         parts.push(`Active Project: ${project.id}\n${project.context}`);
       }
@@ -95,8 +79,9 @@ async function main() {
       try {
         const mistakes = getRelevantMistakes(prompt);
         if (mistakes.length > 0) {
-          parts.push("Past learnings:\n" + mistakes.map((m) => `- ${m}`).join("\n"));
-          console.error(`[pre-prompt] Injected ${mistakes.length} past learning(s)`);
+          const top5 = mistakes.slice(0, 5);
+          parts.push("Past learnings:\n" + top5.map((m) => `- ${m}`).join("\n"));
+          console.error(`[pre-prompt] Injected ${top5.length} past learning(s)`);
         }
       } catch (err) {
         console.error(`[pre-prompt] Mistake injection error (non-blocking): ${err}`);
@@ -104,7 +89,7 @@ async function main() {
     }
 
     console.log(`<system-reminder>\n${parts.join("\n\n")}\n</system-reminder>`);
-    console.error(`[pre-prompt] Classified as ${mode} (${prompt.slice(0, 40)}...)`);
+    console.error(`[pre-prompt] ${result.mode} (score: ${result.score}, signals: [${result.signals.join(", ")}]) — ${rawPrompt.slice(0, 40)}...`);
   } catch (err) {
     // Never block prompt processing
     console.error(`[pre-prompt] Error (non-blocking): ${err}`);

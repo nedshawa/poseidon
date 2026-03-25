@@ -3,6 +3,16 @@
   "env": {
     "POSEIDON_DIR": "${HOME}/.poseidon"
   },
+  "classifier": {
+    "algorithm_threshold": 56,
+    "native_ceiling": 55,
+    "learned_boost_cap": 20,
+    "pattern_decay_days": 90,
+    "abandonment_detection": {
+      "max_exchanges": 3,
+      "min_complexity_score": 40
+    }
+  },
   "identity": {
     "agent_name": "Poseidon",
     "user_name": "",

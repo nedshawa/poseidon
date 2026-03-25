@@ -1,0 +1,21 @@
+# Poseidon AI Agent — systemd user service
+# Install: cp tools/poseidon.service ~/.config/systemd/user/
+#          systemctl --user enable poseidon
+#          systemctl --user start poseidon
+
+[Unit]
+Description=Poseidon AI Agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.poseidon/tools/start-systemd.sh
+Restart=always
+RestartSec=10
+Environment=POSEIDON_DIR=%h/.poseidon
+StandardOutput=append:%h/.poseidon/logs/poseidon.log
+StandardError=append:%h/.poseidon/logs/poseidon-error.log
+
+[Install]
+WantedBy=default.target

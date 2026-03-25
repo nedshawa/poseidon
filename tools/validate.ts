@@ -131,6 +131,28 @@ console.log("\nTools:");
 check("tools/rebuild.ts exists", fileExists("tools/rebuild.ts"));
 check("tools/init.ts exists", fileExists("tools/init.ts"), true);
 check("tools/secret.ts exists", fileExists("tools/secret.ts"), true);
+check("tools/channels.ts exists", fileExists("tools/channels.ts"), true);
+check("tools/learning-status.ts exists", fileExists("tools/learning-status.ts"), true);
+check("tools/start.sh exists", fileExists("tools/start.sh"), true);
+check("tools/poseidon.service exists", fileExists("tools/poseidon.service"), true);
+
+// Week 5: Smart Mode
+console.log("\nSmart Mode (Week 5):");
+check("handlers/complexity-scorer.ts exists", fileExists("hooks/handlers/complexity-scorer.ts"), true);
+
+// Week 5: Error Intelligence
+console.log("\nError Intelligence (Week 5):");
+check("error-capture.ts exists", fileExists("hooks/error-capture.ts"), true);
+check("handlers/error-fingerprint.ts exists", fileExists("hooks/handlers/error-fingerprint.ts"), true);
+check("handlers/learning-metrics.ts exists", fileExists("hooks/handlers/learning-metrics.ts"), true);
+check("handlers/rule-scorer.ts exists", fileExists("hooks/handlers/rule-scorer.ts"), true);
+check("security/error-patterns.yaml exists", fileExists("security/error-patterns.yaml"), true);
+
+// Week 5: Channels
+console.log("\nChannels (Week 5):");
+check("docs/channels/telegram.md exists", fileExists("docs/channels/telegram.md"), true);
+check("docs/channels/discord.md exists", fileExists("docs/channels/discord.md"), true);
+check("docs/channels/voice.md exists", fileExists("docs/channels/voice.md"), true);
 
 // CLAUDE.md token budget
 console.log("\nContext Budget:");

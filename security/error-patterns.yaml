@@ -1,0 +1,39 @@
+# Error classification patterns for error-capture hook.
+# Used by error-fingerprint.ts to classify tool errors by domain.
+# Patterns are case-insensitive regex fragments.
+
+patterns:
+  api_external:
+    - pattern: "401|unauthorized"
+      class: "AUTH_FAILURE"
+    - pattern: "403|forbidden"
+      class: "FORBIDDEN"
+    - pattern: "429|rate.?limit|too many requests"
+      class: "RATE_LIMITED"
+    - pattern: "500|internal server"
+      class: "SERVER_ERROR"
+    - pattern: "503|service unavailable"
+      class: "SERVICE_UNAVAILABLE"
+    - pattern: "timed? ?out|ETIMEDOUT|ECONNREFUSED"
+      class: "TIMEOUT"
+  tool_execution:
+    - pattern: "command not found"
+      class: "COMMAND_NOT_FOUND"
+    - pattern: "permission denied|EACCES"
+      class: "PERMISSION_DENIED"
+    - pattern: "no such file|ENOENT"
+      class: "FILE_NOT_FOUND"
+    - pattern: "not unique|old_string.*not found"
+      class: "EDIT_MATCH_FAILED"
+  configuration:
+    - pattern: "missing.*env|undefined.*variable"
+      class: "MISSING_ENV"
+    - pattern: "invalid.*config|parse.*error.*json"
+      class: "CONFIG_ERROR"
+  resource:
+    - pattern: "ENOSPC|disk.*full|no space"
+      class: "DISK_FULL"
+    - pattern: "ENOMEM|out of memory|OOM"
+      class: "OOM"
+    - pattern: "quota.*exceeded|limit.*exceeded"
+      class: "QUOTA_EXCEEDED"

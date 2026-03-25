@@ -4,9 +4,11 @@
 
 import { readHookInput } from "./lib/hook-io";
 import type { HookInput } from "./lib/hook-io";
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync, statSync } from "fs";
-import { join } from "path";
-import { FAILURES_DIR, CANDIDATES_DIR, RULES_DIR, poseidonPath } from "./lib/paths";
+import { readFileSync, writeFileSync, appendFileSync, mkdirSync, readdirSync, existsSync, statSync } from "fs";
+import { join, dirname } from "path";
+import { createHash } from "crypto";
+import { FAILURES_DIR, CANDIDATES_DIR, RULES_DIR, poseidonPath, getSettingsPath } from "./lib/paths";
+import { scoreComplexity } from "./handlers/complexity-scorer";
 
 const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
 
@@ -135,6 +137,154 @@ function rebuildClaudeMdIfNeeded(): void {
   }
 }
 
+// --- Abandonment Detection ---
+
+interface AbandonmentSettings {
+  max_exchanges: number;
+  min_complexity_score: number;
+}
+
+function getAbandonmentSettings(): AbandonmentSettings {
+  try {
+    const raw = readFileSync(getSettingsPath(), "utf-8");
+    const parsed = JSON.parse(raw);
+    const ad = parsed?.classifier?.abandonment_detection;
+    if (ad) {
+      return {
+        max_exchanges: ad.max_exchanges ?? 3,
+        min_complexity_score: ad.min_complexity_score ?? 40,
+      };
+    }
+  } catch { /* use defaults */ }
+  return { max_exchanges: 3, min_complexity_score: 40 };
+}
+
+function parseTranscriptMessages(transcriptPath: string): string[] {
+  if (!transcriptPath || !existsSync(transcriptPath)) return [];
+  try {
+    const text = readFileSync(transcriptPath, "utf-8");
+    const userPrompts: string[] = [];
+    for (const line of text.split("\n")) {
+      if (!line.trim()) continue;
+      try {
+        const msg = JSON.parse(line);
+        if (msg.type === "human" && typeof msg.message?.content === "string") {
+          userPrompts.push(msg.message.content);
+        }
+      } catch { /* skip malformed */ }
+    }
+    return userPrompts;
+  } catch {
+    return [];
+  }
+}
+
+function detectAbandonment(input: HookInput): void {
+  try {
+    const settings = getAbandonmentSettings();
+    const userMessages = parseTranscriptMessages(input.transcript_path || "");
+
+    if (userMessages.length === 0 || userMessages.length > settings.max_exchanges) return;
+
+    const firstPrompt = userMessages[0];
+    const result = scoreComplexity(firstPrompt);
+
+    if (result.score < settings.min_complexity_score) return;
+
+    // This session looks like an abandonment — user sent a complex prompt but left quickly
+    const hash = createHash("sha256").update(firstPrompt).digest("hex").slice(0, 8);
+    const entry = {
+      timestamp: new Date().toISOString(),
+      prompt_hash: hash,
+      patterns: result.signals,
+      score: result.score,
+      classified_as: result.mode,
+      outcome: "abandoned",
+    };
+
+    const filePath = poseidonPath("memory", "learning", "escalation-patterns.jsonl");
+    mkdirSync(dirname(filePath), { recursive: true });
+    appendFileSync(filePath, JSON.stringify(entry) + "\n");
+
+    console.error(
+      `[session-end] Abandonment detected: score=${result.score}, signals=[${result.signals.join(", ")}], hash=${hash}`
+    );
+  } catch (err) {
+    console.error(`[session-end] Abandonment detection error (non-blocking): ${err}`);
+  }
+}
+
+function detectCrossSessionPatterns(): number {
+  // Read error log and find fingerprints recurring across 3+ sessions
+  const errorLogPath = poseidonPath("memory", "learning", "error-log.jsonl");
+  if (!existsSync(errorLogPath)) return 0;
+
+  try {
+    const lines = readFileSync(errorLogPath, "utf-8").split("\n").filter(Boolean);
+    const fpSessions = new Map<string, Set<string>>();
+    const fpMeta = new Map<string, { error_class: string; message: string }>();
+
+    for (const line of lines) {
+      try {
+        const entry = JSON.parse(line);
+        if (!entry.fingerprint || !entry.session_id) continue;
+        if (!fpSessions.has(entry.fingerprint)) fpSessions.set(entry.fingerprint, new Set());
+        fpSessions.get(entry.fingerprint)!.add(entry.session_id);
+        if (!fpMeta.has(entry.fingerprint)) {
+          fpMeta.set(entry.fingerprint, { error_class: entry.error_class, message: entry.message });
+        }
+      } catch { /* skip malformed */ }
+    }
+
+    let newCandidates = 0;
+    const candidatesDir = CANDIDATES_DIR();
+    const rulesDir = RULES_DIR();
+
+    for (const [fp, sessions] of fpSessions) {
+      if (sessions.size < 3) continue;
+      const meta = fpMeta.get(fp);
+      if (!meta) continue;
+
+      // Check if rule or candidate already covers this fingerprint
+      const hasCoverage = [candidatesDir, rulesDir].some((dir) => {
+        if (!existsSync(dir)) return false;
+        try {
+          return readdirSync(dir).some((f) => {
+            const content = readFileSync(join(dir, f), "utf-8");
+            return content.includes(fp);
+          });
+        } catch { return false; }
+      });
+      if (hasCoverage) continue;
+
+      mkdirSync(candidatesDir, { recursive: true });
+      const now = new Date();
+      const stamp = now.toISOString().replace(/[:.]/g, "-");
+      const candidatePath = join(candidatesDir, `${stamp}-cross-session.md`);
+      const content = `---
+status: pending
+created: ${now.toISOString()}
+fingerprint: ${fp}
+cross_session_count: ${sessions.size}
+---
+# Rule Candidate (Cross-Session Pattern)
+
+**Pattern:** ${meta.error_class} error recurring across ${sessions.size} sessions
+**Rule:** ${meta.message.slice(0, 200)}
+**Fingerprint:** ${fp}
+**Sessions:** ${sessions.size}
+`;
+      writeFileSync(candidatePath, content);
+      newCandidates++;
+    }
+
+    return newCandidates;
+  } catch (err) {
+    console.error(`[session-end] Cross-session detection error: ${err}`);
+    return 0;
+  }
+}
+
 async function main() {
   try {
     const input = await readHookInput();
@@ -151,11 +301,17 @@ async function main() {
       }
     }
 
+    // Detect cross-session error patterns from error log
+    const crossSessionCandidates = detectCrossSessionPatterns();
+
     // Rebuild CLAUDE.md if approved rules exist
     rebuildClaudeMdIfNeeded();
 
+    // Detect session abandonments for escalation learning
+    detectAbandonment(input);
+
     console.error(
-      `[session-end] Summary: ${failures.length} recent failures, ${candidatesCreated} new candidates`
+      `[session-end] Summary: ${failures.length} recent failures, ${candidatesCreated} new candidates, ${crossSessionCandidates} cross-session patterns`
     );
   } catch (err) {
     console.error(`[session-end] Error (non-blocking): ${err}`);

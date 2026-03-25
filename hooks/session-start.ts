@@ -95,7 +95,17 @@ try {
   const steering = loadSteeringRules();
   if (steering) parts.push(steering);
 
-  // 4. Output system-reminder
+  // 4. Learning Score
+  try {
+    const { computeMetrics, formatScoreDisplay } = require("./handlers/learning-metrics");
+    const metrics = computeMetrics();
+    const scoreDisplay = formatScoreDisplay(metrics);
+    if (scoreDisplay) parts.push(`# Learning Intelligence\n${scoreDisplay}`);
+  } catch (err) {
+    console.error(`[session-start] Learning metrics skipped: ${err}`);
+  }
+
+  // 5. Output system-reminder
   if (parts.length > 0) {
     const reminder = parts.join("\n\n---\n\n");
     console.log(`<system-reminder>\n${reminder}\n</system-reminder>`);
