@@ -1,0 +1,35 @@
+# Voice configurations for agent personalities
+# Each voice maps to an ElevenLabs voice ID
+# Users add their own voices here or in ~/.poseidon/agents/{name}.yaml
+
+voices:
+  default:
+    provider: "elevenlabs"
+    voice_id: ""  # User fills in their preferred default voice
+    description: "Default agent voice"
+    settings:
+      stability: 0.5
+      similarity_boost: 0.75
+      style: 0.0
+      speed: 1.0
+
+# Example custom voice (user replaces with their own):
+#  architect:
+#    provider: "elevenlabs"
+#    voice_id: "your-voice-id-here"
+#    description: "Deep, measured, authoritative"
+#    settings:
+#      stability: 0.7
+#      similarity_boost: 0.8
+#      style: 0.1
+#      speed: 0.95
+#
+#  analyst:
+#    provider: "elevenlabs"
+#    voice_id: "your-voice-id-here"
+#    description: "Clear, precise, neutral"
+#    settings:
+#      stability: 0.6
+#      similarity_boost: 0.7
+#      style: 0.0
+#      speed: 1.05
