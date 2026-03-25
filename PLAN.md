@@ -1453,7 +1453,178 @@ Week 10: Integration testing + optional packs
 
 ---
 
-## Build Phases (10 Weeks)
+## Phase 8: Dashboard Web App
+
+*Sources: Claude Researcher (monitoring platforms, Bun patterns), Perplexity Researcher (zero-dep React, JSONL-as-API), Gemini Researcher (metrics taxonomy, layout patterns, reference dashboards).*
+
+### Core Principle
+
+The dashboard reads Poseidon's existing JSONL files directly — no database, no new instrumentation. Poseidon already produces the telemetry; the dashboard is a visualization layer.
+
+### Tech Stack (Zero External Dependencies)
+
+| Layer | Choice | Size | Why |
+|-------|--------|------|-----|
+| Runtime | Bun.serve() | 0 (already installed) | Built-in HTTP server, SSE, file I/O |
+| Frontend | Preact + HTM | ~4KB | React API without build step or JSX transpile |
+| Charts | uPlot (vendored IIFE) | ~45KB | 10x faster than Chart.js, perfect for time-series |
+| Real-time | Server-Sent Events | 0 (browser-native) | One-way data flow, auto-reconnect |
+| Data | JSONL direct reads | 0 | Bun has native JSONL parser |
+| CSS | Vanilla (dark theme) | ~5KB | No Tailwind, no build |
+| **Total frontend** | | **~54KB** | Entire dashboard under 60KB |
+
+### Architecture
+
+```
+bun tools/dashboard.ts
+  │
+  ├── Bun.serve() on localhost:3456
+  │   │
+  │   ├── GET /                    → dashboard SPA (Preact+HTM)
+  │   ├── GET /static/*            → vendored JS/CSS (uPlot, styles)
+  │   │
+  │   ├── GET /api/ratings         → memory/learning/signals/ratings.jsonl
+  │   ├── GET /api/errors          → memory/learning/error-log.jsonl
+  │   ├── GET /api/metrics         → memory/learning/metrics.jsonl
+  │   ├── GET /api/sessions        → memory/work/*/PRD.md (frontmatter scan)
+  │   ├── GET /api/rules           → memory/learning/rules/*.md
+  │   ├── GET /api/candidates      → memory/learning/candidates/*.md
+  │   ├── GET /api/escalation      → memory/learning/escalation-patterns.jsonl
+  │   ├── GET /api/thinking        → memory/learning/signals/thinking-runs.jsonl
+  │   │
+  │   ├── GET /api/settings        → settings.json (read)
+  │   ├── POST /api/settings       → settings.json (write with atomic rename)
+  │   │
+  │   └── GET /api/events          → SSE stream (tails all JSONL files, 500ms poll)
+  │
+  └── Auto-opens browser on start
+```
+
+### 4 Pages
+
+**Page 1 — Overview** (health at a glance, Grafana RED pattern)
+
+| Row | Content | Data Source |
+|-----|---------|-------------|
+| Top | 6 KPI cards: Learning Score, Sessions, Avg Rating, Errors Today, Active Rules, Mode Split | metrics.jsonl, ratings.jsonl, error-log.jsonl |
+| Middle-left | Rating trend (30-day uPlot time-series) | ratings.jsonl |
+| Middle-right | Error rate trend (30-day declining line) | error-log.jsonl |
+| Bottom-left | Mode distribution (ALGO/NATIVE/MINIMAL pie) | escalation-patterns.jsonl |
+| Bottom-right | Recent activity feed (last 10 events) | All JSONL files |
+
+**Page 2 — Learning** ("how smart is my agent" — the differentiator)
+
+| Row | Content | Data Source |
+|-----|---------|-------------|
+| Top | Learning Score gauge with trend arrow | metrics.jsonl |
+| Sub-metrics | ERR, RER, KC, MTBF as 4 mini cards | metrics.jsonl |
+| Middle | Rules timeline (annotated — when created, from which error) | rules/*.md, error-log.jsonl |
+| Bottom | Pending rule candidates with Approve/Reject buttons | candidates/*.md |
+
+**Page 3 — Sessions** (what happened when)
+
+| Row | Content | Data Source |
+|-----|---------|-------------|
+| Top | Search + filter (by mode, date, project) | — |
+| Table | Date, Mode, Duration, Rating, Errors, Project | memory/work/*/PRD.md |
+| Detail | Expandable: PRD content, phases, ISC progress | PRD.md body |
+
+**Page 4 — Settings** (configure Poseidon)
+
+| Row | Content | Data Source |
+|-----|---------|-------------|
+| Sidebar | Groups: Identity, Security, Learning, Classifier, Channels, Advanced | settings.json |
+| Main | Form fields per group (text, number, slider, toggle, dropdown) | settings.json |
+| Footer | Save + Reset buttons, last-saved timestamp | — |
+
+### Empty State Handling
+
+Every panel must handle "no data yet" gracefully:
+
+```
+[Learning Score: Calibrating...]
+[No ratings recorded yet. Use Poseidon for a few sessions to see data here.]
+[No errors captured yet. This is good — or Poseidon hasn't been used yet.]
+```
+
+### File Structure
+
+```
+dashboard/
+├── server.ts              # Bun.serve() — all API routes + SSE + static
+├── index.html             # Preact+HTM SPA (all 4 pages, client-side routing)
+├── static/
+│   ├── uplot.iife.min.js  # Vendored (45KB)
+│   ├── uplot.min.css      # Vendored (2KB)
+│   └── style.css          # Dark theme dashboard styles (~150 lines)
+└── README.md              # Usage docs
+```
+
+Plus: `tools/dashboard.ts` — launcher (starts server, opens browser)
+
+### Settings Write Safety
+
+```
+POST /api/settings:
+  1. Validate incoming JSON (must be parseable, must have required keys)
+  2. Write to settings.json.tmp (temp file)
+  3. Rename settings.json.tmp → settings.json (atomic)
+  4. Return { ok: true }
+  On error: return { error: "..." }, don't touch original file
+```
+
+### API Response Format
+
+All data endpoints return:
+
+```json
+{
+  "data": [...],           // Array of records
+  "count": 42,             // Total records
+  "source": "ratings.jsonl", // Which file
+  "empty": false           // True if file doesn't exist or is empty
+}
+```
+
+Query params: `?since=2026-03-01&limit=100&offset=0`
+
+### Build Tasks — Phase 8
+
+- [ ] dashboard/server.ts — Bun.serve with all API routes + SSE + static
+- [ ] dashboard/index.html — Preact+HTM SPA with 4 pages
+- [ ] dashboard/static/style.css — dark theme, responsive grid
+- [ ] Vendor uPlot (download IIFE build + CSS to dashboard/static/)
+- [ ] tools/dashboard.ts — launcher (start server, open browser)
+- [ ] Overview page: 6 KPI cards + rating trend + error trend
+- [ ] Learning page: Learning Score gauge + metrics + rules timeline + approve/reject
+- [ ] Sessions page: searchable table + PRD detail expansion
+- [ ] Settings page: grouped form editor with save/reset
+- [ ] SSE stream: tail all JSONL files, push new records
+- [ ] Empty state handling for all panels
+- [ ] Settings write safety (temp file + atomic rename)
+- [ ] Test: dashboard serves on localhost:3456
+- [ ] Test: ratings chart renders with sample data
+- [ ] Test: settings save + reload works
+- [ ] Test: SSE stream delivers new records within 1s
+- [ ] Test: empty state shows correctly on fresh install
+- [ ] Update README.md with dashboard docs
+- [ ] Update package.json with `"dashboard": "bun tools/dashboard.ts"`
+
+### Estimates
+
+| Component | Lines | Files |
+|-----------|-------|-------|
+| server.ts | ~250 | 1 |
+| index.html (4-page SPA) | ~700 | 1 |
+| style.css | ~200 | 1 |
+| tools/dashboard.ts | ~30 | 1 |
+| Vendored uPlot | ~1,500 (minified) | 2 |
+| README.md updates | ~30 | 1 |
+| **Total new code** | **~1,200** | **4** (+2 vendored) |
+
+---
+
+## Build Phases (11 Weeks)
 
 ### Week 1: Core Loop
 - [ ] Directory structure + settings.json schema
@@ -1531,6 +1702,22 @@ Week 10: Integration testing + optional packs
 - [ ] Test: Learning Score displayed at session start
 - [ ] v2.0 release tag
 
+### Week 11: Dashboard Web App (v2.1)
+- [ ] dashboard/server.ts — Bun.serve with API + SSE + static
+- [ ] dashboard/index.html — Preact+HTM SPA (4 pages)
+- [ ] dashboard/static/style.css — dark theme
+- [ ] Vendor uPlot IIFE build to dashboard/static/
+- [ ] tools/dashboard.ts — launcher (start server, open browser)
+- [ ] Overview page: KPI cards + rating trend + error trend
+- [ ] Learning page: Learning Score + metrics + rules + approve/reject
+- [ ] Sessions page: searchable table + PRD detail
+- [ ] Settings page: grouped form editor with atomic save
+- [ ] SSE stream tailing all JSONL files
+- [ ] Empty state handling for fresh installs
+- [ ] Update README + package.json
+- [ ] Test: serves on localhost:3456, charts render, settings save works
+- [ ] v2.1 release tag
+
 ---
 
 ## Verification Checklist
@@ -1599,6 +1786,21 @@ Week 10: Integration testing + optional packs
 - [ ] CLAUDE.md generated from template
 - [ ] Hooks configured in settings.json
 
+### Dashboard
+- [ ] `bun tools/dashboard.ts` serves on localhost:3456
+- [ ] Overview page shows 6 KPI cards
+- [ ] Rating trend chart renders with uPlot
+- [ ] Error trend chart renders declining line
+- [ ] Learning page shows Learning Score gauge
+- [ ] Rules timeline shows creation dates
+- [ ] Approve/reject buttons work for pending candidates
+- [ ] Sessions page lists PRDs from memory/work/
+- [ ] Settings page loads and displays all config groups
+- [ ] Settings save writes atomically (temp + rename)
+- [ ] SSE stream delivers new JSONL records within 1s
+- [ ] Empty state renders correctly on fresh install (no crashes)
+- [ ] No external network requests (fully local)
+
 ---
 
 ## Key Decisions Made
@@ -1625,3 +1827,5 @@ Week 10: Integration testing + optional packs
 | Error capture scope | Configurable at install | All tools (recommended), commands+APIs, or commands only. |
 | Learning dashboard | Terminal at session start | Learning Score + key metrics shown every session. No extra infra. |
 | Error-to-rule threshold | 3 occurrences | Same fingerprint 3+ times across sessions triggers rule candidate. |
+| Dashboard stack | Preact+HTM + uPlot + Bun.serve | Zero deps: 54KB frontend, reads JSONL directly, SSE for live updates. |
+| Dashboard scope | 4 pages: Overview, Learning, Sessions, Settings | Monitoring + configuration in one local-only web app. |
