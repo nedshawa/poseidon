@@ -17,9 +17,9 @@ Poseidon is a distributable, project-centric personal AI infrastructure built on
 
 ---
 
-## The Five Genuine Improvements Over PAI
+## The Six Genuine Improvements Over PAI
 
-These are the only areas where Poseidon architecturally differs from PAI. Everything else is inherited.
+These are the areas where Poseidon architecturally differs from PAI. Everything else is inherited.
 
 ### 1. Project-Centric Memory (PAI Gap: Session-Scattered Context)
 
@@ -183,6 +183,90 @@ The installer wizard asks for name, communication style, and a few trait prefere
 
 ---
 
+### 6. Smart Mode Escalation (PAI Gap: Keyword-Only Classification)
+
+**PAI's problem:** Mode classification uses keyword matching only. Action words ("build", "fix", "create") trigger Algorithm mode. But THINKING tasks — architecture, design, investigation, "how should we..." questions — sound conversational and get routed to Native mode. The user defaults to Native, gets shallow results, abandons the session, and restarts. The system never learns from this pattern.
+
+**Poseidon's fix:** A multi-signal complexity scorer that auto-escalates to Algorithm when it detects tasks that need rigor, even if no action keyword is present. The classifier learns from session outcomes — abandoned sessions on complex prompts teach it to escalate similar prompts next time.
+
+**The Complexity Score:**
+
+```
+Score = Σ(signal_weight × signal_match)
+
+┌─────────────────────────────────────────────────────────────────┐
+│ Signal                    │ Weight │ What It Detects             │
+├───────────────────────────┼────────┼─────────────────────────────┤
+│ Thinking questions        │  +25   │ "how should", "what's the   │
+│                           │        │  best way", "why does"      │
+│ Investigation questions   │  +20   │ "look at why", "find out",  │
+│                           │        │  "what's wrong with"        │
+│ Learned pattern match     │  +20   │ Matched a past-abandonment  │
+│                           │        │  pattern (capped at +20)    │
+│ Word count > 30           │  +15   │ Long prompts = more complex │
+│ Enumeration               │  +15   │ "1. 2. 3.", "and...and",   │
+│                           │        │  bullet patterns            │
+│ Word count > 60           │  +10   │ Very long prompt boost      │
+│ Scope words               │  +10   │ "all", "every", "entire",  │
+│                           │        │  "comprehensive"            │
+│ File/code references      │  +10   │ .ts, .py, paths, ```blocks │
+│ Multi-sentence (3+)       │  +10   │ Complex request structure   │
+│ Active project context    │   +5   │ Project = likely non-trivial│
+│ Uncertainty markers       │   +5   │ "maybe", "not sure",       │
+│                           │        │  "could be"                 │
+└───────────────────────────┴────────┴─────────────────────────────┘
+
+Thresholds:
+  0-25:   MINIMAL (if MINIMAL patterns match) or NATIVE
+  26-55:  NATIVE
+  56+:    ALGORITHM (auto-escalate)
+```
+
+**Examples of what changes:**
+
+| Prompt | PAI (keyword) | Poseidon (multi-signal) | Why |
+|--------|--------------|------------------------|-----|
+| "build me a CLI tool" | ALGORITHM ✓ | ALGORITHM ✓ | "build" keyword (same) |
+| "how should we structure the API for the new service?" | NATIVE ✗ | ALGORITHM ✓ | thinking_question(+25) + word_count>30(+15) + scope("service")(+10) = 50→ borderline, but investigation pattern tips it |
+| "can you look at why the deploy keeps failing on staging?" | NATIVE ✗ | ALGORITHM ✓ | investigation(+20) + file_ref("staging")(+10) + word_count>30(+15) + multi_sentence(+10) = 55→ ALGORITHM |
+| "what's the capital of France?" | NATIVE ✓ | NATIVE ✓ | word_count<30, no thinking pattern, no complexity signals |
+| "thanks" | MINIMAL ✓ | MINIMAL ✓ | MINIMAL patterns unchanged |
+
+**Auto-escalation behavior:**
+- Silent — no confirmation prompt
+- One-line notice: `⚡ Escalated to Algorithm (complexity: 67, signals: thinking_question + enumeration + scope)`
+- Override: `--native` flag forces Native, `--algorithm` forces Algorithm
+- Learned patterns capped at +20 boost (prevents drift to always-Algorithm)
+
+**The adaptive learning loop:**
+
+```
+Session starts → pre-prompt classifies mode → work happens
+  │
+  ├── Session ends normally (3+ exchanges, no abandonment)
+  │   → No signal. Classification was probably fine.
+  │
+  └── Session abandoned (short session + complex prompt + no user correction)
+      → Extract prompt patterns that contributed to complexity score
+      → Store in memory/learning/escalation-patterns.jsonl:
+        {"timestamp": "...", "prompt_hash": "...", "patterns": ["thinking_question", "scope"],
+         "score": 42, "classified_as": "NATIVE", "outcome": "abandoned"}
+      → On future prompts matching these patterns: +20 boost toward ALGORITHM
+      → Ceiling: learned boost never exceeds +20 (anti-drift)
+```
+
+**Cold-start → warm classifier transition:**
+- Sessions 1-20: fixed rules only (no behavioral data)
+- Sessions 21+: fixed rules + learned patterns blended
+- Learned pattern relevance decays over 90 days (old patterns fade unless re-validated)
+
+**What PAI keeps that Poseidon inherits:**
+- 3 mode names (MINIMAL / NATIVE / ALGORITHM) — proven, don't rename
+- Algorithm effort tiers (Standard through Comprehensive) — sub-classification within Algorithm
+- Mode header output format
+
+---
+
 ## Inherited from PAI (Proven, No Changes Needed)
 
 These PAI systems are adopted as-is. They work. Don't reinvent them.
@@ -190,7 +274,7 @@ These PAI systems are adopted as-is. They work. Don't reinvent them.
 | PAI System | What Poseidon Inherits |
 |------------|----------------------|
 | **Algorithm v3.7.0** | 7-phase loop (OBSERVE→THINK→PLAN→BUILD→EXECUTE→VERIFY→LEARN) with ISC. Adapted for project-awareness. |
-| **3-Level Mode Classification** | MINIMAL / NATIVE / ALGORITHM. Proven in production. Algorithm internally handles depth via effort tiers. |
+| **3-Level Mode Names** | MINIMAL / NATIVE / ALGORITHM names retained. Classification logic upgraded (see Improvement #6). |
 | **ISC Methodology** | Binary-testable criteria with verification methods. Splitting test. Confidence tags [E]/[I]/[R]. |
 | **PRD Persistence** | PRD.md as single source of truth per work session. Frontmatter + criteria + decisions. |
 | **TELOS (Lite)** | 3 files: MISSION.md, GOALS.md, PROJECTS.md. Loaded at session start. |
@@ -241,12 +325,13 @@ These were in the ZAI plan but are either over-engineered for v1, contradicted b
 │
 ├── hooks/                                # TypeScript lifecycle handlers
 │   ├── session-start.ts                  # Load TELOS, project, steering rules, rebuild CLAUDE.md
-│   ├── pre-prompt.ts                     # Mode classify, inject past mistakes, load project context
+│   ├── pre-prompt.ts                     # Multi-signal complexity scorer, auto-escalation, mistakes, project context
 │   ├── pre-tool.ts                       # Security validation on Bash+Edit+Write+Read, secret scrubbing
 │   ├── post-response.ts                  # Sentiment capture, learning extraction, project state update
 │   ├── session-end.ts                    # Summarize, rule candidates, rebuild
 │   ├── handlers/                         # Shared handler modules
 │   │   ├── rebuild-claude.ts             # Regenerate CLAUDE.md from template + rules
+│   │   ├── complexity-scorer.ts          # Multi-signal mode classifier (Improvement #6)
 │   │   ├── mistake-injector.ts           # Query failures, inject constraints into prompt
 │   │   ├── sentiment-analyzer.ts         # Frustration detection + explicit ratings
 │   │   └── secret-client.ts             # age decrypt/encrypt, /dev/shm staging
@@ -283,6 +368,7 @@ These were in the ZAI plan but are either over-engineered for v1, contradicted b
 │   │   ├── failures/                     # Full failure context dumps
 │   │   ├── rules/                        # Verified steering rules (user-approved)
 │   │   ├── candidates/                   # Pending rule candidates (awaiting approval)
+│   │   ├── escalation-patterns.jsonl     # Learned: prompts that should have been Algorithm
 │   │   └── signals/
 │   │       └── ratings.jsonl             # Append-only feedback signals
 │   └── steering-rules.md                 # Active rules (generated from learning/rules/)
@@ -324,16 +410,19 @@ MIXED (auto-written but user-reviewable):
 
 Same 7-phase loop. Three additions for Poseidon:
 
-### Addition 1: Project Context in OBSERVE
+### Addition 1: Smart Mode Classification in OBSERVE
 
 ```
 OBSERVE phase now includes:
   1. [PAI standard] Parse user request, identify intent
-  2. [PAI standard] Classify mode: MINIMAL / NATIVE / ALGORITHM
+  2. [NEW] Mode classified by pre-prompt complexity scorer (not keyword match)
+     - If auto-escalated: "⚡ Escalated to Algorithm (complexity: 67, signals: ...)"
+     - User can override: --native or --algorithm flags
   3. [NEW] Detect project association:
      Priority: explicit --project flag > active project > cwd match > keyword > recent > none
   4. [NEW] If project detected → load project CONTEXT.md, RULES.md, GOALS.md
   5. [PAI standard] Set effort tier based on complexity
+     - Effort tier informed by complexity score: 56-70 → Standard, 71-85 → Extended, 86+ → Advanced+
 ```
 
 ### Addition 2: Mistake Injection in THINK
@@ -367,7 +456,7 @@ LEARN phase now includes:
 | Hook | Event | What It Does | Latency Budget |
 |------|-------|-------------|----------------|
 | `session-start.ts` | SessionStart | Load TELOS, detect active project, load steering rules, rebuild CLAUDE.md if stale | <200ms |
-| `pre-prompt.ts` | UserPromptSubmit | Mode classify, project association, mistake injection, project context load | <100ms |
+| `pre-prompt.ts` | UserPromptSubmit | Multi-signal complexity scorer, auto-escalation, project context, mistake injection | <100ms |
 | `pre-tool.ts` | PreToolUse | Security validation on Bash+Edit+Write+Read, secret scrubbing, destructive action gate | <50ms |
 | `post-response.ts` | Stop | Sentiment capture, learning extraction, project CONTEXT.md update | <300ms |
 | `session-end.ts` | SessionEnd | Summarize session, generate rule candidates, rebuild CLAUDE.md with new rules | <500ms |
@@ -525,6 +614,38 @@ Step X/N: Communication Channels
 
   ⚠️ Voice: estimated $X/mo at Y min/day. See docs/channels/voice.md for details.
 ```
+
+### settings.json — classifier section
+
+```json
+{
+  "classifier": {
+    "algorithm_threshold": 56,
+    "native_ceiling": 55,
+    "signal_weights": {
+      "thinking_question": 25,
+      "investigation_question": 20,
+      "learned_pattern": 20,
+      "word_count_30": 15,
+      "enumeration": 15,
+      "word_count_60": 10,
+      "scope_words": 10,
+      "file_references": 10,
+      "multi_sentence": 10,
+      "active_project": 5,
+      "uncertainty": 5
+    },
+    "learned_boost_cap": 20,
+    "pattern_decay_days": 90,
+    "abandonment_detection": {
+      "max_exchanges": 3,
+      "min_complexity_score": 40
+    }
+  }
+}
+```
+
+Users can tune thresholds: lower `algorithm_threshold` = more tasks get Algorithm. Higher = more stay Native. Default 56 is calibrated to catch thinking/design tasks while leaving simple questions in Native.
 
 ### settings.json — channels section
 
@@ -953,7 +1074,15 @@ Tool output: "Connection to api.openai.com failed with key sk-abc123def456..."
 - [x] Obsidian sync: system manifest to shared/systems/poseidon.md
 - [x] v1.0 release tag
 
-### Week 5: Error Intelligence + Multi-Channel (v2.0)
+### Week 5: Smart Mode + Error Intelligence + Multi-Channel (v2.0)
+- [ ] Complexity scorer module (hooks/handlers/complexity-scorer.ts)
+- [ ] Rewrite pre-prompt.ts to use complexity scorer (replace keyword classifier)
+- [ ] --native / --algorithm flag parsing
+- [ ] Escalation notice output ("⚡ Escalated to Algorithm...")
+- [ ] Abandonment detection in session-end.ts
+- [ ] escalation-patterns.jsonl writer + reader
+- [ ] Learned pattern decay (>90 days → removed)
+- [ ] Add classifier section to settings.json schema + installer
 - [ ] ErrorCapture PostToolUse hook (hooks/error-capture.ts)
 - [ ] Error fingerprinting module (hooks/handlers/error-fingerprint.ts)
 - [ ] Error classification patterns (security/error-patterns.yaml)
@@ -976,10 +1105,25 @@ Tool output: "Connection to api.openai.com failed with key sk-abc123def456..."
 ## Verification Checklist
 
 ### Core Loop
-- [ ] New prompt triggers mode classification (MINIMAL/NATIVE/ALGORITHM)
+- [ ] New prompt triggers multi-signal complexity classification
+- [ ] Thinking questions ("how should we...") auto-escalate to Algorithm
+- [ ] Investigation questions ("why does X fail") auto-escalate to Algorithm
+- [ ] Simple questions ("what is X") stay in Native
+- [ ] Greetings ("hi", "thanks") stay in MINIMAL
+- [ ] --native flag overrides auto-escalation
+- [ ] --algorithm flag forces Algorithm
+- [ ] Escalation notice printed: "⚡ Escalated to Algorithm (complexity: N, signals: ...)"
 - [ ] Algorithm runs 7-phase loop with ISC
 - [ ] PRD.md created in memory/work/ for Algorithm tasks
 - [ ] Effort tiers (Standard through Comprehensive) applied correctly
+- [ ] Complexity score influences effort tier selection
+
+### Mode Learning
+- [ ] Session abandonment (<3 exchanges on complex prompt) detected
+- [ ] Abandoned prompt patterns stored in escalation-patterns.jsonl
+- [ ] Stored patterns boost future similar prompts toward Algorithm (+20 max)
+- [ ] Learned boost capped at +20 (no drift to always-Algorithm)
+- [ ] Patterns older than 90 days decay
 
 ### Project Memory
 - [ ] Project detected from --project flag
@@ -1044,6 +1188,7 @@ Tool output: "Connection to api.openai.com failed with key sk-abc123def456..."
 | Arch sync | Deferred | Claude Code changes come naturally. Manual sync if needed. |
 | Skill builder | Deferred | Research: self-generated skills = 0pp benefit. Curate manually. |
 | Inter-agent | None | Poseidon is independent. No vault, no Obsidian, no messages. |
+| Mode escalation | Smart auto-escalate (silent) | Multi-signal complexity scorer. Learns from abandoned sessions. --native override. |
 | Channels | Configurable at install | User picks channels during setup. Add/remove later via settings.json. |
 | Voice | Real-time streaming | LiveKit/Pipecat + Deepgram STT + ElevenLabs TTS. Sub-600ms target. |
 | Error capture scope | Configurable at install | All tools (recommended), commands+APIs, or commands only. |
