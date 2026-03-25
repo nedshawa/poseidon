@@ -28,11 +28,31 @@ function rebuild(): void {
   const template = readFileSync(templatePath, "utf-8");
   const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
 
-  // Load steering rules if they exist
-  let steeringRules = "*No steering rules yet. They will be generated as you use the system.*";
-  if (existsSync(steeringRulesPath)) {
-    steeringRules = readFileSync(steeringRulesPath, "utf-8").trim();
+  // Load 3-tier steering rules
+  const rulesParts: string[] = [];
+  // Tier 1: System rules (constitutional)
+  const systemRulesPath = join(baseDir, "rules", "system.md");
+  if (existsSync(systemRulesPath)) {
+    rulesParts.push(readFileSync(systemRulesPath, "utf-8").trim());
   }
+  // Tier 2: User rules (personal)
+  const userRulesPath = join(baseDir, "rules", "user.md");
+  if (existsSync(userRulesPath)) {
+    const userContent = readFileSync(userRulesPath, "utf-8").trim();
+    if (userContent && !userContent.includes("Add your personal rules below")) {
+      rulesParts.push(userContent);
+    }
+  }
+  // Tier 3: Learned rules (auto-generated from error intelligence)
+  if (existsSync(steeringRulesPath)) {
+    const learned = readFileSync(steeringRulesPath, "utf-8").trim();
+    if (learned && !learned.includes("No steering rules yet")) {
+      rulesParts.push(learned);
+    }
+  }
+  const steeringRules = rulesParts.length > 0
+    ? rulesParts.join("\n\n---\n\n")
+    : "*No learned rules yet. System rules are loaded at session start.*";
 
   // Interpolate template variables
   const identity = settings.identity || {};

@@ -33,6 +33,8 @@ export const RULES_DIR = () => poseidonPath("memory", "learning", "rules");
 export const CANDIDATES_DIR = () => poseidonPath("memory", "learning", "candidates");
 export const SIGNALS_DIR = () => poseidonPath("memory", "learning", "signals");
 export const STEERING_RULES_PATH = () => poseidonPath("memory", "steering-rules.md");
+export const SYSTEM_RULES_PATH = () => poseidonPath("rules", "system.md");
+export const USER_RULES_PATH = () => poseidonPath("rules", "user.md");
 export const ALGORITHM_DIR = () => poseidonPath("algorithm");
 export const SECURITY_DIR = () => poseidonPath("security");
 export const LOGS_DIR = () => poseidonPath("logs");

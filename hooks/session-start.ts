@@ -88,8 +88,17 @@ function loadProjectContext(id: string): string {
   return s.length ? `# Active Project: ${id}\n${s.join("\n\n")}` : "";
 }
 function loadSteeringRules(): string {
-  const c = safeRead(STEERING_RULES_PATH());
-  return c ? `# Steering Rules\n${c.trim()}` : "";
+  const parts: string[] = [];
+  // Tier 1: System rules (constitutional, immutable)
+  const sys = safeRead(poseidonPath("rules", "system.md"));
+  if (sys) parts.push(sys.trim());
+  // Tier 2: User rules (personal, user-managed, MUST EXIST even if empty)
+  const usr = safeRead(poseidonPath("rules", "user.md"));
+  if (usr && usr.trim().length > 0) parts.push(usr.trim());
+  // Tier 3: Learned rules summary (from memory/steering-rules.md, rebuilt from approved rules)
+  const learned = safeRead(STEERING_RULES_PATH());
+  if (learned && !learned.includes("No steering rules yet")) parts.push(learned.trim());
+  return parts.length ? `# Steering Rules\n${parts.join("\n\n---\n\n")}` : "";
 }
 function loadLearning(): { display: string; score: number; calibrating: boolean } {
   try {
