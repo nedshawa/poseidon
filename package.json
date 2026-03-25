@@ -9,7 +9,9 @@
     "validate": "bun tools/validate.ts",
     "channels": "bun tools/channels.ts",
     "learning": "bun tools/learning-status.ts",
-    "start": "bash tools/start.sh"
+    "start": "bash tools/start.sh",
+    "onboard": "bun tools/onboard.ts",
+    "dashboard": "bun tools/dashboard.ts"
   },
   "bin": {
     "poseidon": "tools/init.ts"
