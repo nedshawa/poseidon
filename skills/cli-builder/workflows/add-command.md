@@ -7,40 +7,26 @@ description: Add a new command to an existing CLI tool.
 
 ### 1. Read Existing Structure
 
-Examine the CLI entry point to understand:
-- Which tier it uses (process.argv vs Commander.js vs oclif)
-- How commands are registered
-- What patterns existing commands follow
-- What types are defined
+Examine the CLI to understand: tier (process.argv vs Commander), command registry pattern, existing types.
 
 ### 2. Define New Command
 
-Determine:
-- Command name (verb, lowercase, e.g., `sync`, `export`, `check`)
-- Arguments it accepts
-- Options/flags it supports
-- What it returns (for `--json` output)
+Determine: name (verb, lowercase), arguments, options/flags, return type for `--json`.
 
 ### 3. Implement Handler
 
-Follow the same pattern as existing commands:
-
 **Basic tier:**
 ```typescript
-async function cmdNewCommand() {
+async function cmdSync() {
   const target = args[1];
   if (!target) {
-    console.error('Error: target required. Usage: cli-name new-command <target>');
+    console.error('Error: target required. Usage: cli-name sync <target>');
     process.exit(1);
   }
-
   try {
-    const result = await doNewThing(target);
-    if (flags.json) {
-      console.log(JSON.stringify(result, null, 2));
-    } else {
-      console.log(`Done: ${result.summary}`);
-    }
+    const result = await doSync(target);
+    if (flags.json) console.log(JSON.stringify(result, null, 2));
+    else console.log(`Synced: ${result.summary}`);
   } catch (err) {
     console.error(`Error: ${err.message}`);
     process.exit(1);
@@ -50,9 +36,9 @@ async function cmdNewCommand() {
 
 **Standard tier:**
 ```typescript
-program.command('new-command')
-  .description('What this command does')
-  .argument('<target>', 'The target to operate on')
+program.command('sync')
+  .description('Sync target data')
+  .argument('<target>', 'Target to sync')
   .option('--json', 'Output as JSON')
   .option('--dry-run', 'Preview without executing')
   .action(async (target, opts) => { /* handler */ });
@@ -60,37 +46,18 @@ program.command('new-command')
 
 ### 4. Register Command
 
-**Basic tier** — add to the COMMANDS object:
-```typescript
-const COMMANDS: Record<string, () => Promise<void>> = {
-  // ... existing commands
-  'new-command': cmdNewCommand,
-};
-```
+**Basic:** Add to COMMANDS object and update help text.
+**Standard:** Commander auto-registers via `.command()`.
 
-**Standard tier** — Commander auto-registers via `.command()`.
-
-### 5. Update Help Text
-
-Add the new command to the help output:
-```
-Commands:
-  list         List all items
-  get          Get a specific item
-  new-command  What this command does    <-- add this line
-```
-
-### 6. Add Tests
+### 5. Add Tests
 
 ```typescript
-test('new-command works', async () => {
-  const result = await $`bun ./cli-name.ts new-command test-target --json`.json();
-  expect(result).toHaveProperty('summary');
+test('sync works', async () => {
+  const r = await $`bun ./cli-name.ts sync test-target --json`.json();
+  expect(r).toHaveProperty('summary');
 });
-
-test('new-command fails without target', async () => {
-  const proc = Bun.spawn(['bun', './cli-name.ts', 'new-command']);
-  const code = await proc.exited;
-  expect(code).toBe(1);
+test('sync fails without target', async () => {
+  const proc = Bun.spawn(['bun', './cli-name.ts', 'sync']);
+  expect(await proc.exited).toBe(1);
 });
 ```

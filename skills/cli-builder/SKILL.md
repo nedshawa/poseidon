@@ -75,7 +75,6 @@ Before delivering a CLI, verify:
 ## Scope
 
 NOT for:
-- GUI applications or TUI frameworks (suggest blessed or ink)
-- Shell scripts (suggest writing TypeScript instead)
-- CLIs in languages other than TypeScript
-- Package publishing workflows (handle separately)
+- GUI applications or TUI frameworks
+- Shell scripts or non-TypeScript CLIs
+- Package publishing workflows
