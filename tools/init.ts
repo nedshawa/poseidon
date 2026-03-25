@@ -17,10 +17,12 @@ import {
   readdirSync,
   statSync,
   symlinkSync,
+  unlinkSync,
+  appendFileSync,
 } from "fs";
 import { join, dirname, resolve } from "path";
 import { homedir } from "os";
-import { execSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
 
 // ---------------------------------------------------------------------------
 // Readline helpers
@@ -290,7 +292,7 @@ interface Identity {
 }
 
 async function stepIdentity(): Promise<Identity> {
-  printStep(1, 6, "Identity");
+  printStep(1, 7, "Identity");
 
   const agent_name = await ask("What should your AI be called?", "Poseidon");
   const user_name = await ask("What's your name?");
@@ -323,7 +325,7 @@ interface Telos {
 }
 
 async function stepTelos(): Promise<Telos> {
-  printStep(2, 6, "Mission (TELOS)");
+  printStep(2, 7, "Mission (TELOS)");
 
   const setupTelos = await askYesNo("Set up your mission and goals now?", false);
   if (!setupTelos) {
@@ -353,7 +355,7 @@ interface SecretsResult {
 }
 
 async function stepSecrets(installDir: string): Promise<SecretsResult> {
-  printStep(3, 6, "Secret Encryption");
+  printStep(3, 7, "Secret Encryption");
 
   let ageInstalled = false;
   try {
@@ -439,7 +441,7 @@ interface ProjectSetup {
 }
 
 async function stepProject(): Promise<ProjectSetup | null> {
-  printStep(4, 6, "First Project (optional)");
+  printStep(4, 7, "First Project (optional)");
 
   const hasProject = await askYesNo("Do you have a project to set up?", false);
   if (!hasProject) {
@@ -457,16 +459,152 @@ async function stepProject(): Promise<ProjectSetup | null> {
 }
 
 // ---------------------------------------------------------------------------
-// Step 5: Build
+// Step 5: Capabilities (API Keys by category)
+// ---------------------------------------------------------------------------
+
+interface CollectedKey {
+  service: string;
+  field: string;
+  value: string;
+}
+
+function readSecretTerminal(prompt: string): string {
+  process.stdout.write(`      ${prompt}: `);
+  try { execSync("stty -echo < /dev/tty 2>/dev/null", { stdio: "ignore" }); } catch {}
+  const result = spawnSync("bash", ["-c", 'read -r LINE < /dev/tty && echo -n "$LINE"'], {
+    stdio: ["pipe", "pipe", "inherit"],
+  });
+  try { execSync("stty echo < /dev/tty 2>/dev/null", { stdio: "ignore" }); } catch {}
+  const val = result.stdout?.toString().trim() || "";
+  if (val) {
+    process.stdout.write("••••••••••••••••\n");
+  } else {
+    process.stdout.write("(skipped)\n");
+  }
+  return val;
+}
+
+async function stepCapabilities(): Promise<CollectedKey[]> {
+  printStep(5, 7, "Capabilities");
+
+  const setupKeys = await askYesNo("Configure API keys for Poseidon's capabilities?");
+  if (!setupKeys) {
+    console.log("    Skipping — run the installer again and choose 'Add API keys' anytime.\n");
+    return [];
+  }
+
+  const keys: CollectedKey[] = [];
+
+  // ── Research ──
+  console.log("\n    ── Research Capabilities ──");
+  console.log("    These enable parallel research with multiple AI providers.\n");
+  console.log("    Available providers:");
+  console.log("      • Perplexity  — cited answers, real-time web data");
+  console.log("      • Gemini      — cross-domain synthesis (Google AI)");
+  console.log("      • Grok/xAI    — contrarian analysis, social data");
+  console.log("      • Brave       — independent web search");
+  console.log("      • OpenAI      — inference, embeddings, GPT models\n");
+  console.log("    Without these, research uses Claude WebSearch only (free, always available).\n");
+
+  for (const svc of [
+    { id: "perplexity", name: "Perplexity", field: "api_key", docs: "https://perplexity.ai/settings/api" },
+    { id: "gemini", name: "Gemini", field: "api_key", docs: "https://aistudio.google.com/app/apikey" },
+    { id: "grok", name: "Grok/xAI", field: "api_key", docs: "https://console.x.ai/" },
+    { id: "brave", name: "Brave Search", field: "api_key", docs: "https://brave.com/search/api/" },
+    { id: "openai", name: "OpenAI", field: "api_key", docs: "https://platform.openai.com/api-keys" },
+  ]) {
+    const add = await askYesNo(`    Add ${svc.name} API key?`, false);
+    if (add) {
+      console.log(`      Get key: ${svc.docs}`);
+      const val = readSecretTerminal(`${svc.name} API key`);
+      if (val) keys.push({ service: svc.id, field: svc.field, value: val });
+    }
+  }
+
+  // ── Design ──
+  console.log("\n    ── Design Capabilities ──");
+  console.log("    AI-powered UI/UX design tools.\n");
+
+  for (const svc of [
+    { id: "stitch", name: "Google Stitch", field: "api_key", docs: "https://stitch.google.com" },
+    { id: "figma", name: "Figma", field: "api_key", docs: "https://www.figma.com/developers/api" },
+  ]) {
+    const add = await askYesNo(`    Add ${svc.name} API key?`, false);
+    if (add) {
+      console.log(`      Get key: ${svc.docs}`);
+      const val = readSecretTerminal(`${svc.name} API key`);
+      if (val) keys.push({ service: svc.id, field: svc.field, value: val });
+    }
+  }
+
+  // ── Voice ──
+  console.log("\n    ── Voice Capabilities ──");
+  console.log("    Enable voice input/output for Poseidon.\n");
+
+  for (const svc of [
+    { id: "elevenlabs", name: "ElevenLabs (TTS)", field: "api_key", docs: "https://elevenlabs.io/app/settings/api-keys" },
+    { id: "deepgram", name: "Deepgram (STT)", field: "api_key", docs: "https://console.deepgram.com/" },
+  ]) {
+    const add = await askYesNo(`    Add ${svc.name} API key?`, false);
+    if (add) {
+      console.log(`      Get key: ${svc.docs}`);
+      const val = readSecretTerminal(`${svc.name} API key`);
+      if (val) keys.push({ service: svc.id, field: svc.field, value: val });
+    }
+  }
+
+  // ── Finance ──
+  console.log("\n    ── Finance Capabilities ──");
+  console.log("    Market data, stock analysis, economic indicators.\n");
+
+  for (const svc of [
+    { id: "fmp", name: "Financial Modeling Prep", field: "api_key", docs: "https://financialmodelingprep.com/developer/docs/" },
+  ]) {
+    const add = await askYesNo(`    Add ${svc.name} API key?`, false);
+    if (add) {
+      console.log(`      Get key: ${svc.docs}`);
+      const val = readSecretTerminal(`${svc.name} API key`);
+      if (val) keys.push({ service: svc.id, field: svc.field, value: val });
+    }
+  }
+
+  // ── Infrastructure ──
+  console.log("\n    ── Infrastructure ──");
+  console.log("    Git operations, push notifications.\n");
+
+  for (const svc of [
+    { id: "github", name: "GitHub PAT", field: "pat", docs: "https://github.com/settings/tokens" },
+    { id: "ntfy", name: "ntfy (notification topic)", field: "topic", docs: "https://ntfy.sh" },
+  ]) {
+    const add = await askYesNo(`    Add ${svc.name}?`, false);
+    if (add) {
+      console.log(`      Get key: ${svc.docs}`);
+      const val = readSecretTerminal(svc.name);
+      if (val) keys.push({ service: svc.id, field: svc.field, value: val });
+    }
+  }
+
+  if (keys.length > 0) {
+    console.log(`\n    ${keys.length} key(s) collected — will be encrypted during build.`);
+  } else {
+    console.log("\n    No keys added — you can add them anytime by re-running the installer.");
+  }
+
+  return keys;
+}
+
+// ---------------------------------------------------------------------------
+// Step 6: Build
 // ---------------------------------------------------------------------------
 
 async function stepBuild(
   installDir: string,
   identity: Identity,
   telos: Telos,
-  project: ProjectSetup | null
+  project: ProjectSetup | null,
+  collectedKeys?: CollectedKey[]
 ): Promise<void> {
-  printStep(5, 6, "Building");
+  printStep(6, 7, "Building");
 
   // 1. Create directory structure
   const dirs = [
@@ -663,22 +801,72 @@ async function stepBuild(
     console.log("    [ok] Installed dashboard web app");
   }
 
-  // 14. API Key Setup (runs tools/setup.ts for key collection)
-  const setupScript = join(installDir, "tools", "setup.ts");
-  if (existsSync(setupScript)) {
-    const setupKeys = await askYesNo("Set up API keys now? (Perplexity, OpenAI, FMP, etc.)");
-    if (setupKeys) {
-      try {
-        execSync(`POSEIDON_DIR="${installDir}" bun "${setupScript}"`, {
-          stdio: "inherit",
-          cwd: installDir,
-        });
-        console.log("    [ok] API keys configured");
-      } catch {
-        console.log("    [warn] Key setup interrupted — run 'bun tools/setup.ts' later");
+  // 14. Store collected API keys (from Step 5: Capabilities)
+  if (collectedKeys && collectedKeys.length > 0) {
+    try {
+      const ageKeyPath = join(homedir(), ".config", "poseidon", "age-key.txt");
+      const encPath = join(installDir, "secrets.enc");
+      const shmDir = existsSync("/dev/shm") ? "/dev/shm" : "/tmp";
+
+      if (existsSync(ageKeyPath)) {
+        // Decrypt existing (or start fresh)
+        const tmpFile = join(shmDir, `poseidon-install-keys-${Date.now()}.json`);
+        let secrets: Record<string, Record<string, string>> = {};
+        try {
+          if (existsSync(encPath)) {
+            execSync(`age -d -i "${ageKeyPath}" "${encPath}" > "${tmpFile}"`, { stdio: "pipe" });
+            secrets = JSON.parse(readFileSync(tmpFile, "utf-8"));
+          }
+        } catch { /* start fresh */ }
+
+        // Merge all collected keys
+        for (const k of collectedKeys) {
+          secrets[k.service] = { ...(secrets[k.service] || {}), [k.field]: k.value };
+        }
+
+        // Encrypt and write
+        writeFileSync(tmpFile, JSON.stringify(secrets, null, 2));
+        const keyContent = readFileSync(ageKeyPath, "utf-8");
+        const pubMatch = keyContent.match(/public key: (age1\w+)/);
+        if (pubMatch) {
+          execSync(`age -r "${pubMatch[1]}" -o "${encPath}" "${tmpFile}"`, { stdio: "pipe" });
+        }
+        // Shred
+        try { execSync(`shred -u "${tmpFile}" 2>/dev/null`, { stdio: "ignore" }); } catch {}
+        try { unlinkSync(tmpFile); } catch {}
+
+        console.log(`    [ok] ${collectedKeys.length} API key(s) encrypted and stored`);
+
+        // Update registry
+        const registryPath = join(installDir, "security", "secrets-registry.md");
+        if (existsSync(registryPath)) {
+          let registry = readFileSync(registryPath, "utf-8");
+          const headerLine = "|---------|------|-------|--------|-------|";
+          for (const k of collectedKeys) {
+            const now = new Date().toISOString().split("T")[0];
+            const row = `| ${k.service} | ${k.service} | ${k.field} | ✓ active | ${now} |`;
+            if (!registry.includes(`| ${k.service} |`)) {
+              registry = registry.replace(headerLine, `${headerLine}\n${row}`);
+            }
+            // Remove from Not Configured
+            const notConfigRegex = new RegExp(`\\|\\s*\\S*${k.service}\\S*\\s*\\|[^\\n]*\\n`, "i");
+            registry = registry.replace(notConfigRegex, "");
+          }
+          registry = registry.replace(/Last updated:.*/, `Last updated: ${new Date().toISOString()}`);
+          writeFileSync(registryPath, registry);
+          console.log("    [ok] Secret registry updated");
+        }
+      } else {
+        // No age — store in .env
+        const envPath = join(installDir, ".env");
+        for (const k of collectedKeys) {
+          const envKey = `${k.service.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_${k.field.toUpperCase()}`;
+          appendFileSync(envPath, `${envKey}=${k.value}\n`);
+        }
+        console.log(`    [ok] ${collectedKeys.length} key(s) stored in .env (no encryption — run setup.ts for age)`);
       }
-    } else {
-      console.log("    Skipping key setup — run 'bun tools/setup.ts' anytime to add keys");
+    } catch (err) {
+      console.log(`    [warn] Could not store keys: ${err}`);
     }
   }
 
@@ -831,7 +1019,8 @@ async function main(): Promise<void> {
     const telos = await stepTelos();
     await stepSecrets(installDir);
     const project = await stepProject();
-    await stepBuild(installDir, identity, telos, project);
+    const collectedKeys = await stepCapabilities();
+    await stepBuild(installDir, identity, telos, project, collectedKeys);
   } catch (err) {
     if (err instanceof Error && err.message.includes("readline was closed")) {
       console.log("\n    Setup cancelled.");
