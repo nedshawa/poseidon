@@ -590,7 +590,7 @@ A Claude Code session is a CLI process with one stdin. Multi-channel = multiplex
 | **Terminal** | Built-in | Native Claude Code | None | 0ms | $0 |
 | **Telegram** | Text + voice msgs | Claude Code Channels MCP plugin | Bot token | ~1s | $0 |
 | **Discord** | Text | Claude Code Channels MCP plugin | Bot token | ~1s | $0 |
-| **Voice** | Streaming audio | LiveKit Agents + Deepgram + Cartesia | 3 API keys | ~400-500ms | $5-30* |
+| **Voice** | Streaming audio | LiveKit Agents + Deepgram + ElevenLabs | 3 API keys | ~400-500ms | $5-30* |
 | **Phone** | Voice calls | Twilio ConversationRelay | Twilio account | ~1-2s | $3-8 |
 | **Webhooks** | Events | Hookdeck → Channels | Hookdeck account | ~2s | $0 (free tier) |
 
@@ -670,8 +670,8 @@ Users can tune thresholds: lower `algorithm_threshold` = more tasks get Algorith
     "voice": {
       "stt_provider": "deepgram",
       "stt_api_key_path": "deepgram/api_key",
-      "tts_provider": "cartesia",
-      "tts_api_key_path": "cartesia/api_key",
+      "tts_provider": "elevenlabs",
+      "tts_api_key_path": "elevenlabs/api_key",
       "tts_voice_id": "",
       "tts_fallback": "system",
       "stt_fallback": "whisper_local",
@@ -703,10 +703,11 @@ User speaks → Microphone
   → LiveKit Room (WebRTC, sub-100ms transport)
   → Deepgram Nova-3 (streaming STT, sub-300ms, 6.84% WER)
   → Claude API (streaming response, ~200ms TTFT)
-  → Cartesia Sonic Turbo (streaming TTS, 40ms TTFB)
+  → ElevenLabs Flash v2.5 (streaming TTS, 75ms TTFB)
   → LiveKit Room → Speaker
 
 Target round-trip: <500ms (conversational threshold: 600ms)
+Note: 90ms STT + 200ms LLM + 75ms TTS + 100ms transport = ~465ms
 ```
 
 **Latency budget (from research):**
@@ -716,17 +717,17 @@ Target round-trip: <500ms (conversational threshold: 600ms)
 | Audio transport | LiveKit WebRTC | <100ms | Gemini researcher |
 | Speech-to-text | Deepgram Nova-3 | ~90ms first transcript | Claude researcher (AssemblyAI benchmark) |
 | LLM inference | Claude API | ~200ms TTFT | Claude researcher |
-| Text-to-speech | Cartesia Sonic Turbo | 40ms TTFB | Claude researcher |
-| **Total** | | **~430ms** | |
+| Text-to-speech | ElevenLabs Flash v2.5 | 75ms TTFB | Claude researcher |
+| **Total** | | **~465ms** | |
 
-**Why Cartesia over ElevenLabs (conflict resolution):** Claude researcher reported Cartesia at 40ms TTFB vs ElevenLabs at 75ms. Gemini researcher recommended ElevenLabs for quality. **Resolution:** Cartesia is default for latency (First Principles: every ms matters in a 600ms budget). ElevenLabs available as `tts_provider` config override for users who prefer voice quality over speed.
+**TTS choice: ElevenLabs Flash v2.5 (75ms TTFB).** Best voice quality in the market. 75ms TTFB is well within the 600ms conversational budget. No alternative TTS providers — ElevenLabs only.
 
 **Fallback chain (from premortem F3):**
 
 | Component | Primary | Fallback | Latency Impact |
 |-----------|---------|----------|----------------|
 | STT | Deepgram Nova-3 | Whisper local (whisper.cpp) | +500ms |
-| TTS | Cartesia Sonic Turbo | System TTS (espeak/say) | +300ms, lower quality |
+| TTS | ElevenLabs Flash v2.5 | System TTS (espeak/say) | +300ms, lower quality |
 | Transport | LiveKit | Direct WebSocket | +50ms |
 
 **Key features:**
@@ -752,7 +753,7 @@ Target round-trip: <500ms (conversational threshold: 600ms)
 | Telegram | Bot token revoked | Telegram channel silent, others work | Re-create bot, update token |
 | Discord | WebSocket disconnects | Auto-reconnects (Channels built-in) | Automatic |
 | Voice | Deepgram API down | Falls back to Whisper local | Automatic with latency degradation |
-| Voice | Cartesia API down | Falls back to system TTS | Automatic with quality degradation |
+| Voice | ElevenLabs API down | Falls back to system TTS | Automatic with quality degradation |
 | All | Session death during restart | Filesystem buffer stores pending messages | Replayed on restart |
 
 ### Persistence
@@ -804,11 +805,11 @@ No custom message buffer needed — each platform handles its own queuing.
 - [ ] Telegram setup guide (docs/channels/telegram.md)
 - [ ] Discord setup guide (docs/channels/discord.md)
 - [ ] Voice pipeline integration (hooks/handlers/voice-pipeline.ts)
-- [ ] LiveKit Agents wrapper with Deepgram STT + Cartesia TTS
+- [ ] LiveKit Agents wrapper with Deepgram STT + ElevenLabs Flash v2.5 TTS
 - [ ] Voice fallback chain (Whisper local + system TTS)
 - [ ] Voice channel setup guide with cost calculator (docs/channels/voice.md)
 - [ ] Test: Telegram message reaches session and gets response
-- [ ] Test: Voice round-trip <600ms with Deepgram + Cartesia
+- [ ] Test: Voice round-trip <500ms with Deepgram + ElevenLabs Flash v2.5
 - [ ] Test: Voice falls back to Whisper when Deepgram unavailable
 - [ ] Test: Session persists across disconnect (tmux and systemd)
 - [ ] Test: Rate limiter caps at 10 msg/min per channel
@@ -1238,7 +1239,7 @@ skills/thinking/
 | **User-defined agents (not hardcoded)** | Dalio, Maestro, Ritchie are Ned's | Users define agents via installer or `/agent create`. Stored in `agents/{name}.yaml`. |
 | **Project-scoped agents** | All agents are global | `agents/{name}.yaml` can specify `project_scope: ["project-x"]`. Agent only available when that project is active. |
 | **Agent effectiveness tracking** | No data on which agents produce better output | Log agent invocations + session outcomes. Over time: "Agent X produces 20% higher satisfaction on security tasks than Agent Y." |
-| **Provider-agnostic voice** | ElevenLabs-specific prosody | Voice config supports: ElevenLabs, Cartesia, system TTS, or none. Graceful degradation. |
+| **Simplified voice config** | ElevenLabs-specific prosody hardcoded | Clean ElevenLabs integration with system TTS fallback. Prosody settings exposed in settings.json. |
 
 **Architecture:**
 
