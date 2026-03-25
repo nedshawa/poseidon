@@ -72,16 +72,33 @@ function loadPatterns(): SecurityPatterns | null {
 }
 
 function matchPathRules(filePath: string, patterns: SecurityPatterns, tool: string): void {
+  const shortPath = filePath.split("/").slice(-2).join("/");
   for (const p of patterns.paths.zeroAccess) {
-    if (matchesGlob(filePath, p)) { log("BLOCKED", tool, `Zero-access: ${filePath}`); blockTool(`Cannot access protected path: ${filePath}`); }
+    if (matchesGlob(filePath, p)) {
+      log("BLOCKED", tool, `Zero-access: ${filePath}`);
+      console.error(`\u2699 PreTool \u2502 ${tool} \u2502 \ud83d\udea8 BLOCKED \u2502 zero-access: ${shortPath}`);
+      blockTool(`Cannot access protected path: ${filePath}`);
+    }
   }
-  if (tool === "Read") { allowTool(); return; }
+  if (tool === "Read") {
+    console.error(`\u2699 PreTool \u2502 ${tool} \u2502 \u2713 allowed${shortPath ? " \u2502 path: " + shortPath : ""}`);
+    allowTool(); return;
+  }
   for (const p of patterns.paths.readOnly) {
-    if (matchesGlob(filePath, p)) { log("BLOCKED", tool, `Read-only: ${filePath}`); blockTool(`Cannot write to read-only path: ${filePath}`); }
+    if (matchesGlob(filePath, p)) {
+      log("BLOCKED", tool, `Read-only: ${filePath}`);
+      console.error(`\u2699 PreTool \u2502 ${tool} \u2502 \ud83d\udea8 BLOCKED \u2502 read-only: ${shortPath}`);
+      blockTool(`Cannot write to read-only path: ${filePath}`);
+    }
   }
   for (const p of patterns.paths.confirmWrite) {
-    if (matchesGlob(filePath, p)) { log("CONFIRM", tool, `Confirm-write: ${filePath}`); askUser(`Requires confirmation to modify: ${filePath}`); return; }
+    if (matchesGlob(filePath, p)) {
+      log("CONFIRM", tool, `Confirm-write: ${filePath}`);
+      console.error(`\u2699 PreTool \u2502 ${tool} \u2502 \u26a0 confirm \u2502 path: ${shortPath}`);
+      askUser(`Requires confirmation to modify: ${filePath}`); return;
+    }
   }
+  console.error(`\u2699 PreTool \u2502 ${tool} \u2502 \u2713 allowed${shortPath ? " \u2502 path: " + shortPath : ""}`);
   allowTool();
 }
 
@@ -89,13 +106,25 @@ function validateBash(input: HookInput, patterns: SecurityPatterns): void {
   const cmd = input.tool_input?.command || "";
   const cleaned = cmd.replace(/^(\s*\w+=\S+\s+)*/, ""); // strip env prefixes
   for (const r of patterns.bash.trusted)
-    if (new RegExp(r.pattern).test(cleaned)) { allowTool(); return; }
+    if (new RegExp(r.pattern).test(cleaned)) {
+      console.error(`\u2699 PreTool \u2502 Bash \u2502 \u2713 allowed`);
+      allowTool(); return;
+    }
   for (const r of patterns.bash.blocked)
-    if (new RegExp(r.pattern).test(cmd)) { log("BLOCKED", "Bash", `${r.reason}: ${cmd.slice(0, 120)}`); blockTool(`${r.reason}`); }
+    if (new RegExp(r.pattern).test(cmd)) {
+      log("BLOCKED", "Bash", `${r.reason}: ${cmd.slice(0, 120)}`);
+      console.error(`\u2699 PreTool \u2502 Bash \u2502 \ud83d\udea8 BLOCKED \u2502 ${r.reason}`);
+      blockTool(`${r.reason}`);
+    }
   for (const r of patterns.bash.confirm)
-    if (new RegExp(r.pattern).test(cmd)) { log("CONFIRM", "Bash", `${r.reason}: ${cmd.slice(0, 120)}`); askUser(`Security: ${r.reason}\nCommand: ${cmd.slice(0, 200)}`); return; }
+    if (new RegExp(r.pattern).test(cmd)) {
+      log("CONFIRM", "Bash", `${r.reason}: ${cmd.slice(0, 120)}`);
+      console.error(`\u2699 PreTool \u2502 Bash \u2502 \u26a0 confirm \u2502 ${cmd.slice(0, 60)}`);
+      askUser(`Security: ${r.reason}\nCommand: ${cmd.slice(0, 200)}`); return;
+    }
   for (const r of patterns.bash.alert)
     if (new RegExp(r.pattern).test(cmd)) log("ALERT", "Bash", `${r.reason}: ${cmd.slice(0, 120)}`);
+  console.error(`\u2699 PreTool \u2502 Bash \u2502 \u2713 allowed`);
   allowTool();
 }
 
@@ -103,13 +132,19 @@ async function main() {
   try {
     const input = await readHookInput();
     const tool = input.tool_name || "";
-    if (!["Bash", "Edit", "Write", "Read"].includes(tool)) { allowTool(); return; }
+    if (!["Bash", "Edit", "Write", "Read"].includes(tool)) {
+      console.error(`\u2699 PreTool \u2502 ${tool} \u2502 \u2713 allowed`);
+      allowTool(); return;
+    }
     const patterns = loadPatterns();
-    if (!patterns) { console.error("[pre-tool] No patterns.yaml found, allowing all"); allowTool(); return; }
+    if (!patterns) {
+      console.error(`\u2699 PreTool \u2502 ${tool} \u2502 \u2713 allowed \u2502 no patterns.yaml`);
+      allowTool(); return;
+    }
     if (tool === "Bash") validateBash(input, patterns);
     else matchPathRules(input.tool_input?.file_path || input.tool_input?.path || "", patterns, tool);
   } catch (err) {
-    console.error(`[pre-tool] Error (non-blocking): ${err}`);
+    console.error(`\u2699 PreTool \u2502 error: ${err}`);
     allowTool();
   }
 }

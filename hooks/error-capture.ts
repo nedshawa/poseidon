@@ -57,11 +57,17 @@ async function main() {
     if (SKIP_TOOLS.has(tool)) return;
 
     const { text, exitCode } = extractOutput(input);
-    if (!hasError(tool, text, exitCode)) return;
+    if (!hasError(tool, text, exitCode)) {
+      console.error(`\u2699 PostTool \u2502 ${tool} \u2502 \u2713 no error`);
+      return;
+    }
 
     // Classify the error
     const signal = classifyError(tool, text, exitCode);
-    if (!signal) return;
+    if (!signal) {
+      console.error(`\u2699 PostTool \u2502 ${tool} \u2502 \u2713 no error`);
+      return;
+    }
 
     // Generate fingerprint
     const fingerprint = generateFingerprint(signal);
@@ -90,10 +96,11 @@ async function main() {
     const logPath = poseidonPath("memory", "learning", "error-log.jsonl");
     appendFileSync(logPath, JSON.stringify(entry) + "\n");
 
-    console.error(`[error-capture] Logged ${signal.errorClass} (${fingerprint})`);
+    const exitStr = exitCode !== null ? `exit ${exitCode}` : "error";
+    console.error(`\u2699 PostTool \u2502 ${tool} \u2502 ${exitStr} \u2502 ${signal.errorClass} \u2502 fingerprint: ${fingerprint}`);
   } catch (err) {
     // Never block tool execution
-    console.error(`[error-capture] Non-blocking error: ${err}`);
+    console.error(`\u2699 PostTool \u2502 error: ${err}`);
   }
 }
 

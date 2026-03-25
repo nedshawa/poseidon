@@ -112,7 +112,7 @@ ${matched.map((m) => `- "${m}"`).join("\n")}
 Pending rule candidate generation.
 `;
   writeFileSync(join(dir, "ERROR_ANALYSIS.md"), content);
-  console.error(`[post-response] Failure dump created: ${dir}`);
+  // failure dump created — logged in main consolidated line
 }
 
 function updateProjectContext(summary: string): void {
@@ -127,7 +127,7 @@ function updateProjectContext(summary: string): void {
     const date = new Date().toISOString().split("T")[0];
     const line = `\nLast session: ${date} — ${summary}\n`;
     appendFileSync(contextPath, line);
-    console.error(`[post-response] Updated project context: ${projectId}`);
+    // project context updated — logged in main consolidated line
   } catch {
     // non-blocking
   }

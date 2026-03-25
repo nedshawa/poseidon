@@ -1,0 +1,67 @@
+services:
+  research:
+    - id: perplexity
+      name: Perplexity
+      fields: [api_key]
+      purpose: Research agent (PerplexityResearcher)
+      docs: https://www.perplexity.ai/settings/api
+    - id: gemini
+      name: Google Gemini
+      fields: [api_key]
+      purpose: Research agent (GeminiResearcher)
+      docs: https://aistudio.google.com/app/apikey
+    - id: grok
+      name: Grok/xAI
+      fields: [api_key]
+      purpose: Research agent (GrokResearcher)
+      docs: https://console.x.ai/
+    - id: brave
+      name: Brave Search
+      fields: [api_key]
+      purpose: Web search
+      docs: https://brave.com/search/api/
+  ai_models:
+    - id: openai
+      name: OpenAI
+      fields: [api_key]
+      purpose: Inference, embeddings
+      docs: https://platform.openai.com/api-keys
+    - id: anthropic
+      name: Anthropic
+      fields: [api_key]
+      purpose: Claude API
+      docs: https://console.anthropic.com/settings/keys
+  design:
+    - id: stitch
+      name: Google Stitch
+      fields: [api_key]
+      purpose: UI design SDK
+      docs: https://stitch.google.com
+  voice:
+    - id: elevenlabs
+      name: ElevenLabs
+      fields: [api_key]
+      purpose: Text-to-speech
+      docs: https://elevenlabs.io/app/settings/api-keys
+    - id: deepgram
+      name: Deepgram
+      fields: [api_key]
+      purpose: Speech-to-text
+      docs: https://console.deepgram.com/
+  finance:
+    - id: fmp
+      name: Financial Modeling Prep
+      fields: [api_key]
+      purpose: Stock data, fundamentals
+      docs: https://financialmodelingprep.com/developer/docs/
+  infrastructure:
+    - id: github
+      name: GitHub
+      fields: [pat]
+      purpose: Git operations
+      docs: https://github.com/settings/tokens
+    - id: ntfy
+      name: ntfy
+      fields: [topic, token]
+      purpose: Push notifications
+      docs: https://ntfy.sh

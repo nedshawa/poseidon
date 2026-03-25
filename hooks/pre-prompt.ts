@@ -199,6 +199,34 @@ function storeSecretQuietly(service: string, field: string, key: string): string
   }
 }
 
+function updateRegistry(service: string, field: string): void {
+  try {
+    const registryPath = poseidonPath("security", "secrets-registry.md");
+    let content = existsSync(registryPath) ? readFileSync(registryPath, "utf-8") : "";
+    if (!content) return;
+    const now = new Date().toISOString().split("T")[0];
+    const newRow = `| ${service} | ${service} | ${field} | \u2713 active | ${now} |`;
+
+    // Already in Available section
+    if (content.includes(`| ${service} |`) && content.includes("\u2713 active")) return;
+
+    // Add to Available section after header line
+    const headerLine = "|---------|------|-------|--------|-------|";
+    if (content.includes(headerLine)) {
+      content = content.replace(headerLine, `${headerLine}\n${newRow}`);
+    }
+
+    // Remove from Not Configured section if present
+    const notConfigRegex = new RegExp(`\\|\\s*\\S*${service}\\S*\\s*\\|[^\\n]*\\n`, "i");
+    content = content.replace(notConfigRegex, "");
+
+    // Update timestamp
+    content = content.replace(/Last updated:.*/, `Last updated: ${new Date().toISOString()}`);
+
+    writeFileSync(registryPath, content);
+  } catch {}
+}
+
 async function main() {
   try {
     const input = await readHookInput();
@@ -210,13 +238,14 @@ async function main() {
     const detected = detectSecretInPrompt(rawPrompt);
     if (detected) {
       const result = storeSecretQuietly(detected.service, detected.field, detected.key);
+      if (result.startsWith("\u2713")) updateRegistry(detected.service, detected.field);
       const masked = detected.key.slice(0, 4) + "..." + detected.key.slice(-4);
       secretNote = `🔐 SECRET AUTO-CAPTURED: ${result}\n` +
         `The user's message contained an API key (${masked}) which has been stored securely.\n` +
         `DO NOT repeat the full key in your response. Refer to it as "${detected.service} API key" only.\n` +
         `DO NOT include the key in any tool calls, logs, or output.\n` +
         `Confirm to the user: their ${detected.service} key has been stored at ${detected.service}/${detected.field}.`;
-      console.error(`[pre-prompt] Secret detected and stored: ${detected.service}/${detected.field} (${masked})`);
+      // Secret log line handled below in consolidated output
     }
 
     // Save prompt context for next prompt's key detection
@@ -241,10 +270,10 @@ async function main() {
         const ctx = loadProjectContext(switchTo);
         parts.push(`\ud83d\udd04 Switched to project: ${switchTo}`);
         if (ctx) parts.push(`Active Project: ${switchTo}\n${ctx}`);
-        console.error(`[pre-prompt] Switched to project: ${switchTo}`);
+        // Project switch logged below in consolidated output
       } else {
         parts.push(`\u26a0 Project "${switchTo}" not found in memory/projects/`);
-        console.error(`[pre-prompt] Project switch failed: ${switchTo} not found`);
+        // Project switch failure logged below in consolidated output
       }
     }
     // Strip flags
@@ -265,16 +294,23 @@ async function main() {
         if (mistakes.length > 0) {
           const top = mistakes.slice(0, 5);
           parts.push("Past learnings:\n" + top.map((m) => `- ${m}`).join("\n"));
-          console.error(`[pre-prompt] Injected ${top.length} past learning(s)`);
+          // Learning injection logged below in consolidated output
         }
-      } catch (err) { console.error(`[pre-prompt] Mistake injection error (non-blocking): ${err}`); }
+      } catch (err) { /* mistake injection non-blocking */ }
     }
     // Inject secret note at the TOP if a key was detected
     if (secretNote) parts.unshift(secretNote);
     console.log(`<system-reminder>\n${parts.join("\n\n")}\n</system-reminder>`);
-    console.error(`[pre-prompt] ${result.mode} (score: ${result.score}, signals: [${result.signals.join(", ")}]) \u2014 ${rawPrompt.slice(0, 40)}...`);
+    // Standardized single-line log
+    if (detected) {
+      const masked = detected.key.slice(0, 4) + "..." + detected.key.slice(-4);
+      console.error(`\u2699 PrePrompt \u2502 \ud83d\udd10 Secret captured: ${detected.service}/${detected.field} \u2502 registry updated`);
+    } else {
+      const rulesInjected = parts.filter(p => p.startsWith("Past learnings")).length > 0 ? parts.filter(p => p.startsWith("Past learnings")).length : 0;
+      console.error(`\u2699 PrePrompt \u2502 ${result.mode} (score: ${result.score}, signals: ${result.signals.join(", ")}) \u2502 project: ${project?.id || "_general"} \u2502 ${rulesInjected} rules injected`);
+    }
   } catch (err) {
-    console.error(`[pre-prompt] Error (non-blocking): ${err}`);
+    console.error(`\u2699 PrePrompt \u2502 error: ${err}`);
   }
 }
 

@@ -4,7 +4,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
-import { getBaseDir, getSettingsPath, poseidonPath, TELOS_DIR, STEERING_RULES_PATH, PROJECTS_DIR, SKILLS_DIR, RULES_DIR, CANDIDATES_DIR } from "./lib/paths";
+import { getBaseDir, getSettingsPath, poseidonPath, TELOS_DIR, STEERING_RULES_PATH, PROJECTS_DIR, SKILLS_DIR, RULES_DIR, CANDIDATES_DIR, SECURITY_DIR } from "./lib/paths";
 import { readHookInput } from "./lib/hook-io";
 
 interface ProjectInfo { slug: string; name: string; lastUsed: Date; decisions: number; rules: number; stale: boolean; }
@@ -137,6 +137,41 @@ function countTodayErrors(): number {
   } catch { return 0; }
 }
 
+function loadSecretsSummary(): string {
+  try {
+    const registryPath = poseidonPath("security", "secrets-registry.md");
+    if (!existsSync(registryPath)) return "";
+    const content = readFileSync(registryPath, "utf-8");
+    const available: string[] = [];
+    for (const line of content.split("\n")) {
+      if (line.includes("\u2713 active")) {
+        const match = line.match(/\|\s*(\S+)\s*\|\s*(\S+)\s*\|\s*(\S+)\s*\|/);
+        if (match) available.push(match[2]);
+      }
+    }
+    // Read services.yaml for all known service ids
+    const missing: string[] = [];
+    try {
+      const yamlPath = poseidonPath("security", "services.yaml");
+      if (existsSync(yamlPath)) {
+        const yaml = readFileSync(yamlPath, "utf-8");
+        const ids: string[] = [];
+        for (const line of yaml.split("\n")) {
+          const m = line.match(/^\s+- id:\s*(\S+)/);
+          if (m) ids.push(m[1]);
+        }
+        for (const id of ids) {
+          if (!available.includes(id)) missing.push(id);
+        }
+      }
+    } catch {}
+    if (available.length === 0 && missing.length === 0) return "";
+    const avail = available.map(s => `\u2713 ${s}`).join("  ");
+    const miss = missing.map(s => `\u2717 ${s}`).join("  ");
+    return `\ud83d\udd10 Secrets: ${avail}${miss ? "  " + miss : ""}\nAccess: SecretClient.read("service", "field") | Add: paste key in prompt`;
+  } catch { return ""; }
+}
+
 async function main() {
   try {
     const input = await readHookInput();
@@ -156,12 +191,15 @@ async function main() {
     // 4. Steering rules
     const steering = loadSteeringRules();
     if (steering) parts.push(steering);
-    // 5. Learning score
+    // 5. Secret registry summary
+    const secrets = loadSecretsSummary();
+    if (secrets) parts.push(secrets);
+    // 6. Learning score
     const learning = loadLearning();
     if (learning.display) parts.push(`# Learning Intelligence\n${learning.display}`);
-    // 6. System-reminder output
+    // 7. System-reminder output
     if (parts.length) console.log(`<system-reminder>\n${parts.join("\n\n---\n\n")}\n</system-reminder>`);
-    // 7. Status line (stderr only)
+    // 8. Status line (stderr only)
     const skills = countDirs(SKILLS_DIR(), (n) => existsSync(join(SKILLS_DIR(), n, "SKILL.md")));
     const ruleCount = countDirs(RULES_DIR());
     const errs = countTodayErrors();
@@ -174,19 +212,17 @@ async function main() {
     const max = (input as any)?.context_window?.size ?? 0;
     const used = Math.round(max * pct / 100);
     const gs = git.changes > 0 ? `+${git.changes}` : "clean";
-    console.error(`\u26a1 ${agent} \u2502 ${model} \u2502 ${skills} skills \u2502 ${ruleCount} rules \u2502 Learning: ${learning.calibrating ? "calibrating" : learning.score + "/100"} \u2502 ${errs} errors today`);
-    console.error(`\ud83d\udcc2 ${active || "_general"} \u2502 ${projCount} projects \u2502 0 bg jobs \u2502 ${git.branch} ${gs} \u2502 \u21bb session`);
-    console.error(`\ud83d\udcca Today: +0 rules \u2502 ${errs} errors \u2502 ${cands} pending \u2502 Rating: ${rating}`);
-    console.error(`\ud83e\udde0 Context: [${contextBar(pct)}] ${pct}% \u2502 ${used}/${max} tokens \u2502 ${max - used} left`);
-    // Log
-    const loaded: string[] = [];
-    if (telos) loaded.push("telos");
-    if (active) loaded.push(`project:${active}`);
-    if (steering) loaded.push("steering-rules");
-    if (projects.length) loaded.push(`picker:${projects.length}`);
-    console.error(`[session-start] Loaded: ${loaded.join(", ") || "nothing"} from ${getBaseDir()}`);
+    // Count secrets available from registry
+    const secretCount = (() => {
+      try {
+        const reg = poseidonPath("security", "secrets-registry.md");
+        if (!existsSync(reg)) return 0;
+        return (readFileSync(reg, "utf-8").match(/\u2713 active/g) || []).length;
+      } catch { return 0; }
+    })();
+    console.error(`\u2699 SessionStart \u2502 telos ${telos ? "\u2713" : "\u2717"} \u2502 project: ${active || "_general"} \u2502 rules: ${ruleCount} \u2502 secrets: ${secretCount} available`);
   } catch (err) {
-    console.error(`[session-start] Error (non-blocking): ${err}`);
+    console.error(`\u2699 SessionStart \u2502 error: ${err}`);
   }
 }
 
