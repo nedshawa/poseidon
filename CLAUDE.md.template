@@ -58,35 +58,19 @@ When you make a mistake and the user corrects you:
 
 When the user wants to add an API key, offers a key, or a tool fails with 401/403:
 
-**TELL THE USER TO PASTE THE KEY DIRECTLY IN THE PROMPT. The pre-prompt hook will intercept it BEFORE you see it.**
+**The user can paste API keys naturally in conversation.** The pre-prompt hook auto-detects keys, stores them securely, and injects a note telling you what happened.
 
-Tell the user:
-> "Paste your key like this: `onboard fmp YOUR_KEY_HERE`"
-> "The hook will catch it before I see it — the key never reaches me."
+When the user shares an API key (in any natural format), you will see a `🔐 SECRET AUTO-CAPTURED` note in your system-reminder. When you see this:
+1. Confirm to the user that their key was stored
+2. **NEVER repeat the full key** — refer to it as "your FMP key" etc.
+3. **NEVER include the key in tool calls, code, or output**
+4. Tell them where it's stored (the note tells you the path)
 
-The user types ONE line in the normal prompt:
-```
-onboard fmp abc123def456ghi789
-```
+The hook detects: `sk-*`, `ghp_*`, `sk-ant-*`, `pplx-*`, `AKIA*`, and any 32+ char alphanumeric string when the user mentions "key", "api", "token", or a service name.
 
-The pre-prompt hook:
-1. Detects the key
-2. BLOCKS the prompt (you never see it)
-3. Stores it encrypted
-4. Shows the user: "✓ FMP key stored securely"
-
-**DO NOT run bun tools/onboard.ts — it doesn't work inside Claude Code.**
+**DO NOT run bun tools/onboard.ts** — it doesn't work inside Claude Code.
 **DO NOT ask the user to open a separate terminal.**
-**DO NOT use the ! prefix.**
-**JUST tell them to type: `onboard SERVICE KEY`**
-
-Supported formats:
-- `onboard fmp abc123...` — explicit service + key
-- `onboard openai sk-abc123...` — any service name
-- Raw key paste: `sk-abc123...` — auto-detects service from pattern
-
-**Trigger words:** "API key", "onboard", "add key", "set up [service]", "here's my key", "new API", "give you a key"
-**On auth failure (401/403):** Tell user: "This needs an API key. Type: `onboard SERVICE YOUR_KEY`"
+**Just let them paste naturally.** The hook handles the rest.
 
 ## Steering Rules
 

@@ -76,12 +76,16 @@ function formatEscalation(r: ComplexityResult): string {
   return r.escalated ? `\n\u26a1 Escalated to Algorithm (complexity: ${r.score}, signals: ${r.signals.join(", ")})` : "";
 }
 
-// ── Secret Interception (BEFORE Claude sees anything) ───────────
-// Detects API keys in the prompt, BLOCKS the prompt, stores the key securely.
-// The key NEVER reaches Claude's context window.
+// ── Secret Detection & Auto-Store ───────────────────────────────
+// Detects API keys in the user's natural prompt, stores them securely,
+// and injects a note telling Poseidon the key was captured.
+// The user just talks naturally — "here's my FMP key: abc123..."
 
 import { poseidonPath } from "./lib/paths";
-import { mkdirSync, appendFileSync } from "fs";
+import { appendFileSync } from "fs";
+import { execSync as execSyncImport } from "child_process";
+import { randomBytes } from "crypto";
+import { homedir } from "os";
 
 const KEY_PATTERNS = [
   { re: /sk-[a-zA-Z0-9]{20,}/, service: "openai" },
@@ -93,54 +97,53 @@ const KEY_PATTERNS = [
   { re: /xoxb-[a-zA-Z0-9\-]{20,}/, service: "slack" },
 ];
 
-function detectAndStoreSecret(prompt: string): { blocked: boolean; message: string } | null {
-  const trimmed = prompt.trim();
+// Detect any service name mentioned near the key
+const SERVICE_HINTS: Record<string, string[]> = {
+  openai: ["openai", "gpt", "chatgpt"],
+  anthropic: ["anthropic", "claude"],
+  fmp: ["fmp", "financial modeling", "financialmodelingprep"],
+  perplexity: ["perplexity", "pplx"],
+  gemini: ["gemini", "google ai"],
+  github: ["github", "gh"],
+  elevenlabs: ["elevenlabs", "eleven labs", "11labs"],
+  deepgram: ["deepgram"],
+  twilio: ["twilio"],
+};
 
-  // Pattern 1: "onboard SERVICE KEY"
-  const onboardMatch = trimmed.match(/^onboard\s+(\w[\w-]*)\s+(.{8,})$/i);
-  if (onboardMatch) {
-    const service = onboardMatch[1].toLowerCase();
-    const key = onboardMatch[2].trim();
-    return storeKey(service, "api_key", key);
-  }
+function detectSecretInPrompt(prompt: string): { service: string; key: string; field: string } | null {
+  const lower = prompt.toLowerCase();
 
-  // Pattern 2: "SERVICE KEY" (e.g., "fmp abc123def456")
-  const serviceKeyMatch = trimmed.match(/^(\w[\w-]*)\s+key\s*[:=]?\s*(.{8,})$/i);
-  if (serviceKeyMatch) {
-    const service = serviceKeyMatch[1].toLowerCase();
-    const key = serviceKeyMatch[2].trim();
-    return storeKey(service, "api_key", key);
-  }
-
-  // Pattern 3: Raw key paste (auto-detect service from pattern)
+  // Check for known key patterns anywhere in the prompt
   for (const { re, service } of KEY_PATTERNS) {
-    const match = trimmed.match(re);
-    if (match && trimmed.length < 200) { // Short prompt = likely just a key paste
-      return storeKey(service, "api_key", match[0]);
+    const match = prompt.match(re);
+    if (match) return { service, key: match[0], field: "api_key" };
+  }
+
+  // Check for long alphanumeric strings (32+ chars) that look like API keys
+  // Only if the prompt mentions "key", "api", "token", "secret", "onboard"
+  if (/key|api|token|secret|onboard|credential/i.test(lower)) {
+    const longKey = prompt.match(/[a-zA-Z0-9_\-]{32,}/);
+    if (longKey) {
+      // Try to detect service from context
+      let detectedService = "_unknown";
+      for (const [svc, hints] of Object.entries(SERVICE_HINTS)) {
+        if (hints.some(h => lower.includes(h))) { detectedService = svc; break; }
+      }
+      return { service: detectedService, key: longKey[0], field: "api_key" };
     }
   }
 
-  // Pattern 4: "key: VALUE" or "api_key: VALUE"
-  const keyValueMatch = trimmed.match(/^(?:api[_-]?)?key\s*[:=]\s*(.{8,})$/i);
-  if (keyValueMatch) {
-    return storeKey("_pending", "api_key", keyValueMatch[1].trim());
-  }
-
-  return null; // Not a secret — continue normal processing
+  return null;
 }
 
-function storeKey(service: string, field: string, key: string): { blocked: boolean; message: string } {
+function storeSecretQuietly(service: string, field: string, key: string): string {
   try {
-    // Store via age encryption if available
-    const { execSync } = require("child_process");
-    const { randomBytes } = require("crypto");
-    const { homedir } = require("os");
-
+    const home = homedir();
     const keyPath = (() => {
       try {
         const s = JSON.parse(readFileSync(getSettingsPath(), "utf-8"));
-        return s?.security?.age_key_path || join(homedir(), ".config", "poseidon", "age-key.txt");
-      } catch { return join(homedir(), ".config", "poseidon", "age-key.txt"); }
+        return s?.security?.age_key_path || join(home, ".config", "poseidon", "age-key.txt");
+      } catch { return join(home, ".config", "poseidon", "age-key.txt"); }
     })();
 
     const encPath = poseidonPath("secrets.enc");
@@ -148,12 +151,9 @@ function storeKey(service: string, field: string, key: string): { blocked: boole
     const tmpFile = join(shmDir, `poseidon-key-${randomBytes(6).toString("hex")}.json`);
 
     if (existsSync(keyPath) && existsSync(encPath)) {
-      // Decrypt existing, merge, re-encrypt
-      try {
-        execSync(`age -d -i "${keyPath}" "${encPath}" > "${tmpFile}"`, { stdio: "pipe" });
-      } catch {
-        writeFileSync(tmpFile, "{}");
-      }
+      try { execSyncImport(`age -d -i "${keyPath}" "${encPath}" > "${tmpFile}"`, { stdio: "pipe" }); }
+      catch { writeFileSync(tmpFile, "{}"); }
+
       const secrets = JSON.parse(readFileSync(tmpFile, "utf-8"));
       secrets[service] = { ...(secrets[service] || {}), [field]: key };
       writeFileSync(tmpFile, JSON.stringify(secrets, null, 2));
@@ -161,32 +161,20 @@ function storeKey(service: string, field: string, key: string): { blocked: boole
       const keyContent = readFileSync(keyPath, "utf-8");
       const pubMatch = keyContent.match(/public key: (age1\w+)/);
       if (pubMatch) {
-        execSync(`age -r "${pubMatch[1]}" -o "${encPath}" "${tmpFile}"`, { stdio: "pipe" });
+        execSyncImport(`age -r "${pubMatch[1]}" -o "${encPath}" "${tmpFile}"`, { stdio: "pipe" });
       }
-      // Shred temp file
-      try { execSync(`shred -u "${tmpFile}" 2>/dev/null`, { stdio: "ignore" }); } catch {}
+      try { execSyncImport(`shred -u "${tmpFile}" 2>/dev/null`, { stdio: "ignore" }); } catch {}
       try { require("fs").unlinkSync(tmpFile); } catch {}
 
-      const masked = key.slice(0, 4) + "..." + key.slice(-4);
-      return {
-        blocked: true,
-        message: `✓ ${service} key stored securely (${masked}). The key never reached the AI.\n  Path: ${service}/${field}\n  Read: bun tools/secret.ts read ${service} ${field}`
-      };
+      return `✓ ${service}/${field} stored (encrypted)`;
     } else {
-      // No age encryption — store in .env as fallback
       const envPath = poseidonPath(".env");
       const envKey = `${service.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_${field.toUpperCase()}`;
       appendFileSync(envPath, `${envKey}=${key}\n`);
-      return {
-        blocked: true,
-        message: `✓ ${service} key stored in .env (${envKey}). No age encryption — run bun tools/secret.ts init for encrypted storage.\n  The key never reached the AI.`
-      };
+      return `✓ ${service}/${field} stored in .env (no encryption — run bun tools/secret.ts init)`;
     }
   } catch (err: any) {
-    return {
-      blocked: true,
-      message: `✗ Failed to store key: ${err.message}. The key was blocked and NOT sent to the AI.`
-    };
+    return `✗ Failed to store: ${err.message}`;
   }
 }
 
@@ -196,16 +184,18 @@ async function main() {
     const rawPrompt = input.prompt || "";
     if (!rawPrompt.trim()) return;
 
-    // ── SECRET INTERCEPTION (runs FIRST, before Claude sees anything) ──
-    const secretResult = detectAndStoreSecret(rawPrompt);
-    if (secretResult?.blocked) {
-      // BLOCK the prompt — Claude never processes it
-      console.log(JSON.stringify({
-        decision: "block",
-        reason: secretResult.message,
-      }));
-      console.error(`[pre-prompt] Secret intercepted and stored. Prompt blocked.`);
-      return;
+    // ── SECRET AUTO-CAPTURE (detects keys, stores them, warns Poseidon) ──
+    let secretNote = "";
+    const detected = detectSecretInPrompt(rawPrompt);
+    if (detected) {
+      const result = storeSecretQuietly(detected.service, detected.field, detected.key);
+      const masked = detected.key.slice(0, 4) + "..." + detected.key.slice(-4);
+      secretNote = `🔐 SECRET AUTO-CAPTURED: ${result}\n` +
+        `The user's message contained an API key (${masked}) which has been stored securely.\n` +
+        `DO NOT repeat the full key in your response. Refer to it as "${detected.service} API key" only.\n` +
+        `DO NOT include the key in any tool calls, logs, or output.\n` +
+        `Confirm to the user: their ${detected.service} key has been stored at ${detected.service}/${detected.field}.`;
+      console.error(`[pre-prompt] Secret detected and stored: ${detected.service}/${detected.field} (${masked})`);
     }
 
     const parts: string[] = [];
@@ -250,6 +240,8 @@ async function main() {
         }
       } catch (err) { console.error(`[pre-prompt] Mistake injection error (non-blocking): ${err}`); }
     }
+    // Inject secret note at the TOP if a key was detected
+    if (secretNote) parts.unshift(secretNote);
     console.log(`<system-reminder>\n${parts.join("\n\n")}\n</system-reminder>`);
     console.error(`[pre-prompt] ${result.mode} (score: ${result.score}, signals: [${result.signals.join(", ")}]) \u2014 ${rawPrompt.slice(0, 40)}...`);
   } catch (err) {
