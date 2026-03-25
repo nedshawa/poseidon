@@ -1,12 +1,10 @@
 # Domain Reconnaissance Workflow
 
-Comprehensive domain intelligence gathering. Enumerates DNS records, discovers
-subdomains, maps mail infrastructure, and retrieves registration data.
+DNS enumeration, subdomain discovery, mail mapping, and registration data.
 
 ## Prerequisites
 
-- Target domain name (e.g., `example.com`)
-- Operator confirms ownership or authorization
+- Target domain name and operator authorization
 
 ## Procedure
 

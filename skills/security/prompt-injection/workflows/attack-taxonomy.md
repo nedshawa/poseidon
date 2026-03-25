@@ -1,12 +1,10 @@
 # Prompt Injection Attack Taxonomy
 
-Comprehensive classification of prompt injection attack types against LLM
-applications. Used as a reference when planning security tests.
+Classification of prompt injection attack types against LLM applications.
 
 ## Category 1: Direct Prompt Injection
 
-The attacker's input is part of the user prompt and attempts to override
-system instructions.
+User input attempts to override system instructions.
 
 ### 1.1 Instruction Override
 - **Technique**: "Ignore previous instructions and instead..."

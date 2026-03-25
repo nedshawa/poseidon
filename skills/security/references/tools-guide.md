@@ -54,9 +54,8 @@ commands for common package managers.
 | `promptfoo` | LLM red-teaming | `bun add promptfoo` / `npm install promptfoo` |
 | `rebuff` | Injection detection | `pip install rebuff` |
 
-## General Advice
+## Advice
 
-- Start with tools already installed on the system (`dig`, `curl`, `openssl`)
+- Start with pre-installed tools (`dig`, `curl`, `openssl`)
 - Add specialized tools only when needed for specific assessments
-- Keep tools updated — security tools with outdated signatures miss new vulns
-- Verify tool integrity after download (check GPG signatures or checksums)
+- Keep tools updated and verify integrity after download

@@ -69,5 +69,4 @@ curl -s "$TARGET/api/fetch?url=http://169.254.169.254/latest/meta-data/"
 
 ## Output
 
-Findings table per category with: code, description, evidence, severity,
-and remediation steps.
+Findings table per category: code, description, evidence, severity, remediation.

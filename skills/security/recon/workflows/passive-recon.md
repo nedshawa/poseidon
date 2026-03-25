@@ -1,13 +1,11 @@
 # Passive Reconnaissance Workflow
 
-Intelligence gathering using only publicly available data. No packets are sent
-to the target — all information comes from third-party sources, DNS resolution,
-and public databases. Suitable when active scanning is not authorized.
+Intelligence from public data only. No packets sent to the target.
+Suitable when active scanning is not authorized.
 
 ## Prerequisites
 
 - Target domain, IP, or organization name
-- No authorization required (all sources are public)
 
 ## Procedure
 
