@@ -80,6 +80,12 @@ addHook("PostToolUse", h("error-capture.ts"), "WebSearch");
 addHook("Stop", h("post-response.ts"));
 addHook("SessionEnd", h("session-end.ts"));
 
+// Wire status line
+settings.statusLine = {
+  type: "command",
+  command: join(poseidonDir, "tools", "statusline.sh"),
+};
+
 // Write atomically
 const tmpPath = claudeSettingsPath + ".tmp";
 writeFileSync(tmpPath, JSON.stringify(settings, null, 2) + "\n");
