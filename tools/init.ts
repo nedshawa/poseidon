@@ -630,6 +630,30 @@ async function stepBuild(
     console.log(`    [ok] Created project: ${project.name} (${project.slug})`);
   }
 
+  // 12b. Create _general project (global workspace)
+  const generalDir = join(installDir, "memory", "projects", "_general");
+  if (!existsSync(generalDir)) {
+    ensureDir(join(generalDir, "knowledge"));
+    ensureDir(join(generalDir, "sessions"));
+    const templateDir = join(installDir, "memory", "projects", ".template");
+    for (const file of ["CONTEXT.md", "GOALS.md", "DECISIONS.md", "RULES.md"]) {
+      const src = join(templateDir, file);
+      if (existsSync(src)) copyFileSync(src, join(generalDir, file));
+    }
+    const generalMeta = `name: "_general"\nstatus: active\ncreated: "${new Date().toISOString().split("T")[0]}"\ndescription: "Global workspace for non-project tasks"\nlast_used: "${new Date().toISOString()}"\ntags: []\n`;
+    writeFileSync(join(generalDir, "META.yaml"), generalMeta);
+    console.log("    [ok] Created _general project (global workspace)");
+  }
+
+  // 12c. Default active_project to _general if no project was created
+  if (!project) {
+    settings.project.active_project = "_general";
+    writeFileSync(
+      join(installDir, "settings.json"),
+      JSON.stringify(settings, null, 2) + "\n"
+    );
+  }
+
   // 13. Copy dashboard
   const dashboardSource = join(SOURCE_DIR, "dashboard");
   if (existsSync(dashboardSource)) {
