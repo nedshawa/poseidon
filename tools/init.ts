@@ -655,6 +655,7 @@ async function stepBuild(
   const systemdDir = join(homedir(), ".config", "systemd", "user");
   const serviceName = "poseidon-dashboard";
   const bunPath = (() => { try { return execSync("which bun", { stdio: "pipe" }).toString().trim(); } catch { return "bun"; } })();
+  const bunDir = dirname(bunPath);
 
   try {
     ensureDir(systemdDir);
@@ -670,6 +671,7 @@ Restart=always
 RestartSec=5
 Environment=POSEIDON_DIR=${installDir}
 Environment=PORT=3456
+Environment=PATH=${bunDir}:/usr/local/bin:/usr/bin:/bin
 
 [Install]
 WantedBy=default.target
