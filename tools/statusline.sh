@@ -36,6 +36,10 @@ context_max=${context_max:-200000}
 agent_name=$(jq -r '.identity.agent_name // "Poseidon"' "$SETTINGS" 2>/dev/null)
 agent_name="${agent_name:-Poseidon}"
 
+# Poseidon version from package.json
+poseidon_version=$(jq -r '.version // "?"' "$POSEIDON_DIR/package.json" 2>/dev/null)
+poseidon_version="${poseidon_version:-?}"
+
 # Active project
 active_project=$(jq -r '.project.active_project // "_general"' "$SETTINGS" 2>/dev/null)
 active_project="${active_project:-_general}"
@@ -118,7 +122,7 @@ ctx_color="$GREEN"
 [ "$pct_int" -gt 75 ] && ctx_color="$RED"
 
 # Line 1: System health
-echo -e "${CYAN}⚡${RESET} ${WHITE}${agent_name}${RESET} ${DIM}│${RESET} ${DIM}${model_name}${RESET} ${DIM}│${RESET} ${BLUE}${skill_count} skills${RESET} ${DIM}│${RESET} ${GREEN}${rule_count} rules${RESET} ${DIM}│${RESET} Learning: ${CYAN}${learning_display}${RESET} ${DIM}│${RESET} ${errors_today} errors today"
+echo -e "${CYAN}⚡${RESET} ${WHITE}${agent_name}${RESET} ${DIM}v${poseidon_version}${RESET} ${DIM}│${RESET} ${DIM}${model_name}${RESET} ${DIM}│${RESET} ${BLUE}${skill_count} skills${RESET} ${DIM}│${RESET} ${GREEN}${rule_count} rules${RESET} ${DIM}│${RESET} Learning: ${CYAN}${learning_display}${RESET} ${DIM}│${RESET} ${errors_today} errors today"
 
 # Line 2: Project context
 echo -e "${CYAN}📂${RESET} ${WHITE}${active_project}${RESET} ${DIM}│${RESET} ${project_count} projects ${DIM}│${RESET} ${git_info} ${DIM}│${RESET} ${candidate_count} pending"
