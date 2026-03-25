@@ -465,7 +465,277 @@ OS detection covers: macOS (brew), Debian/Ubuntu (apt), Fedora/RHEL (dnf), Arch 
 
 ---
 
-## Build Phases (4 Weeks)
+## Phase 5: Multi-Channel Communication (Listeners)
+
+### Architecture
+
+Poseidon can be reached via multiple channels simultaneously. Channels are **configurable** — chosen during install, added/removed later via settings.json.
+
+```
+┌─────────────┐     ┌──────────────────────┐     ┌─────────────────┐
+│  Terminal    │────▶│                      │     │  Voice Pipeline  │
+│  (native)   │     │   Claude Code         │     │  ┌───────────┐  │
+├─────────────┤     │   Session             │◀───▶│  │ Deepgram  │  │
+│  Telegram   │────▶│   (tmux/systemd)      │     │  │ Nova-3    │  │
+│  (Channels) │     │                      │     │  │ (STT)     │  │
+├─────────────┤     │   Hooks fire on all   │     │  └─────┬─────┘  │
+│  Discord    │────▶│   channels equally    │     │  ┌─────▼─────┐  │
+│  (Channels) │     │                      │     │  │ ElevenLabs│  │
+├─────────────┤     └──────────────────────┘     │  │ Flash v2.5│  │
+│  Voice      │────▶  (via LiveKit/Pipecat)      │  │ (TTS)     │  │
+│  (realtime) │                                  │  └───────────┘  │
+├─────────────┤                                  └─────────────────┘
+│  Webhooks   │────▶  (via Hookdeck, optional)
+└─────────────┘
+```
+
+### Available Channels
+
+| Channel | Type | Implementation | Prerequisites |
+|---------|------|---------------|---------------|
+| **Terminal** | Built-in | Native Claude Code | None |
+| **Telegram** | Text + voice messages | Claude Code Channels MCP plugin | Telegram bot token |
+| **Discord** | Text | Claude Code Channels MCP plugin | Discord bot token |
+| **Voice (realtime)** | Streaming audio | LiveKit Agents or Pipecat framework | Deepgram API key + ElevenLabs API key |
+| **Phone** | Voice calls | Twilio ConversationRelay | Twilio account ($3-8/mo) |
+| **Webhooks** | Events | Hookdeck → Channels | Hookdeck account (free tier) |
+
+### Installer Channel Selection
+
+During `bun tools/init.ts`, a new step asks:
+
+```
+Step X/N: Communication Channels
+
+  Which channels should Poseidon listen on? (select all that apply)
+
+  [x] Terminal (always enabled)
+  [ ] Telegram — receive/send messages from phone, watch, web
+  [ ] Discord — receive/send messages from Discord servers
+  [ ] Voice (realtime) — speak and hear responses in real-time
+  [ ] Phone (Twilio) — call a phone number to talk to Poseidon
+  [ ] Webhooks (Hookdeck) — receive events from GitHub, Stripe, etc.
+```
+
+Selected channels are stored in settings.json → `channels.enabled[]` and can be changed later.
+
+### settings.json — channels section
+
+```json
+{
+  "channels": {
+    "enabled": ["terminal", "telegram"],
+    "telegram": {
+      "bot_token_path": "telegram/bot_token",
+      "allowed_users": []
+    },
+    "discord": {
+      "bot_token_path": "discord/bot_token",
+      "allowed_users": []
+    },
+    "voice": {
+      "stt_provider": "deepgram",
+      "stt_api_key_path": "deepgram/api_key",
+      "tts_provider": "elevenlabs",
+      "tts_api_key_path": "elevenlabs/api_key",
+      "tts_voice_id": "",
+      "framework": "livekit"
+    },
+    "phone": {
+      "provider": "twilio",
+      "account_sid_path": "twilio/account_sid",
+      "auth_token_path": "twilio/auth_token",
+      "phone_number": ""
+    },
+    "webhooks": {
+      "provider": "hookdeck",
+      "api_key_path": "hookdeck/api_key"
+    }
+  }
+}
+```
+
+All tokens stored via SecretClient (age-encrypted). Only paths referenced in settings.
+
+### Voice Pipeline — Real-Time Streaming
+
+Architecture using LiveKit Agents (or Pipecat as alternative):
+
+```
+User speaks → Microphone
+  → LiveKit Room (WebRTC, sub-100ms transport)
+  → Deepgram Nova-3 (streaming STT, sub-300ms)
+  → Claude API (streaming response)
+  → ElevenLabs Flash v2.5 (streaming TTS, 75ms TTFB)
+  → LiveKit Room → Speaker
+
+Total round-trip: ~400-600ms (near-conversational)
+```
+
+**Key features:**
+- Barge-in support (interrupt while agent is speaking)
+- WebRTC for lowest-latency audio transport
+- Streaming at every stage (no batch processing)
+- Voice Activity Detection (VAD) for natural turn-taking
+
+### Persistence — Keeping Poseidon Always Available
+
+```
+Option A (simple): tmux session with auto-restart
+  tmux new-session -d -s poseidon "claude --channels telegram discord"
+
+Option B (production): systemd service
+  [Unit]
+  Description=Poseidon AI Agent
+  After=network.target
+
+  [Service]
+  ExecStart=/usr/bin/claude --channels telegram discord
+  WorkingDirectory=%h
+  Restart=always
+  RestartSec=10
+  Environment=POSEIDON_DIR=%h/.poseidon
+
+  [Install]
+  WantedBy=default.target
+```
+
+### Build Tasks — Phase 5
+
+- [ ] Add channels section to settings.json schema
+- [ ] Add channel selection step to installer wizard
+- [ ] Channel launcher script (tools/channels.ts) — starts Claude Code with configured channels
+- [ ] systemd service template (tools/poseidon.service)
+- [ ] Telegram setup guide (docs/channels/telegram.md)
+- [ ] Discord setup guide (docs/channels/discord.md)
+- [ ] Voice pipeline integration (hooks/handlers/voice-pipeline.ts)
+- [ ] LiveKit Agents / Pipecat wrapper for voice channel
+- [ ] Voice channel setup guide (docs/channels/voice.md)
+- [ ] Test: Telegram message reaches Claude Code session and gets response
+- [ ] Test: Voice input → STT → Claude → TTS → voice output in <600ms
+- [ ] Test: Session persists across terminal disconnect (tmux/systemd)
+
+---
+
+## Phase 6: Error Intelligence (Enhanced Learning)
+
+### The Problem
+
+Poseidon v1.0 captures user frustration and explicit ratings, but doesn't automatically capture **system errors** — API failures, tool crashes, permission denials, timeouts. These are the most learnable errors because they have clear patterns and deterministic fixes.
+
+### Architecture — 3-Tier Error Capture
+
+```
+Tier 1: CAPTURE (PostToolUse hook, <50ms)
+  │  Every tool call → detect error → fingerprint → append error-log.jsonl
+  │
+  ▼
+Tier 2: ANALYZE (SessionEnd hook, ~5s)
+  │  Session errors → cluster by fingerprint → detect patterns
+  │  3+ same fingerprint across sessions = needs a rule
+  │
+  ▼
+Tier 3: LEARN (periodic background)
+  │  Cross-session patterns → generate rule candidates
+  │  User approves → inject into pre-prompt on similar future tasks
+  │
+  ▼
+Learning Score displayed at session start
+```
+
+### Error Fingerprinting
+
+```typescript
+// Strip variable parts, hash the template
+"File not found: /home/user/project/src/index.ts"
+  → "File not found: {path}"
+  → hash("Read|1|FILE_NOT_FOUND|File not found: {path}")
+  → fingerprint: "a3f7b2c1e9d04518"
+```
+
+Same fingerprint = same root cause. Variable parts (paths, timestamps, IDs, ports) are stripped before hashing.
+
+### Error Classification
+
+| Domain | Examples | Detection |
+|--------|----------|-----------|
+| **API/External** | 401, 403, 429, 503, timeout | HTTP status codes in output |
+| **Tool Execution** | exit code != 0, ENOENT, EACCES | Exit codes + stderr patterns |
+| **Logic/Reasoning** | Wrong output, hallucinated paths | User frustration signals |
+| **Configuration** | Missing env vars, wrong paths | Known error message patterns |
+| **Resource** | Disk full, OOM, quota exceeded | System error codes |
+
+### Configurable Error Scope
+
+During install or later in settings.json:
+
+```json
+{
+  "learning": {
+    "error_capture": {
+      "scope": "all",
+      "tools": ["Bash", "Read", "Write", "Edit", "WebSearch", "WebFetch", "Grep", "Glob"],
+      "min_occurrences_for_rule": 3,
+      "auto_triage": true
+    }
+  }
+}
+```
+
+Scope options in installer:
+- **all** (recommended) — capture errors from all tools
+- **commands_and_apis** — Bash + WebSearch/WebFetch only
+- **commands_only** — Bash only
+
+### The Learning Score
+
+Displayed at session start:
+
+```
+📊 Learning Score: 73/100 (↑4 from last week)
+   Errors prevented: 84%  |  Rules active: 12  |  Coverage: 71%
+   MTBF improvement: +2.3x over 30 days
+```
+
+**Formula:**
+```
+LearningScore = (30 × ErrorReductionRate) + (30 × RuleEffectiveness)
+              + (20 × KnowledgeCoverage) + (20 × normalized_MTBF)
+
+Scale: 0-100
+  0-25:  Novice    — few rules, errors recurring
+  26-50: Learning  — rules generating, some prevention
+  51-75: Competent — most common errors prevented
+  76-100: Expert   — rare errors only, high effectiveness
+```
+
+### Metrics Stored
+
+File: `memory/learning/metrics.jsonl` (append-only, one entry per session)
+
+```jsonl
+{"timestamp":"2026-04-15T10:00:00Z","learning_score":73,"err":0.16,"rer":0.84,"mtbf_hours":12.5,"kc":0.71,"lv_gen":3,"lv_verified":2,"total_rules":12,"total_fingerprints":17,"errors_this_session":2,"errors_prevented":8}
+```
+
+### Build Tasks — Phase 6
+
+- [ ] ErrorCapture PostToolUse hook (hooks/error-capture.ts)
+- [ ] Error fingerprinting module (hooks/handlers/error-fingerprint.ts)
+- [ ] Error classification patterns (security/error-patterns.yaml)
+- [ ] Enhance session-end.ts with cross-session pattern detection
+- [ ] Learning metrics computation (hooks/handlers/learning-metrics.ts)
+- [ ] Learning Score display in session-start.ts
+- [ ] Add error_capture config to settings.json schema
+- [ ] Add error scope selection to installer
+- [ ] tools/learning-status.ts — CLI for detailed metrics
+- [ ] Test: Bash error captured with correct fingerprint
+- [ ] Test: Same error 3x across sessions → rule candidate generated
+- [ ] Test: Approved rule injected → error prevented → RER updated
+- [ ] Test: Learning Score increases after rule prevents error
+
+---
+
+## Build Phases (5 Weeks)
 
 ### Week 1: Core Loop
 - [ ] Directory structure + settings.json schema
@@ -506,16 +776,34 @@ OS detection covers: macOS (brew), Debian/Ubuntu (apt), Fedora/RHEL (dnf), Arch 
 - [ ] Test: installer creates working Poseidon instance from scratch
 - [ ] Test: skills route correctly from "USE WHEN" keywords
 
-### Week 4: Polish + Release
-- [ ] Test on a second machine (clean environment)
-- [ ] GitHub repo setup (nedshawa/poseidon)
-- [ ] README.md and getting-started.md
-- [ ] architecture.md for contributors
+### Week 4: Polish + v1.0 Release
+- [x] Test on a second machine (clean environment)
+- [x] GitHub repo setup (nedshawa/poseidon)
+- [x] README.md and getting-started.md
+- [x] architecture.md for contributors
 - [ ] GitHub Actions CI (lint, type-check)
 - [ ] Edge case testing (no TELOS, no projects, minimal config)
 - [ ] Performance profiling (hook latency < budget)
-- [ ] Obsidian sync: system manifest to shared/systems/poseidon.md
-- [ ] v1.0 release tag
+- [x] Obsidian sync: system manifest to shared/systems/poseidon.md
+- [x] v1.0 release tag
+
+### Week 5: Error Intelligence + Multi-Channel (v2.0)
+- [ ] ErrorCapture PostToolUse hook (hooks/error-capture.ts)
+- [ ] Error fingerprinting module (hooks/handlers/error-fingerprint.ts)
+- [ ] Error classification patterns (security/error-patterns.yaml)
+- [ ] Learning metrics computation (hooks/handlers/learning-metrics.ts)
+- [ ] Learning Score display in session-start.ts
+- [ ] Add error_capture + channels config to settings.json
+- [ ] Add channel selection + error scope to installer wizard
+- [ ] Channel launcher script (tools/channels.ts)
+- [ ] systemd service template (tools/poseidon.service)
+- [ ] Telegram + Discord channel setup guides
+- [ ] Voice pipeline integration (LiveKit/Pipecat wrapper)
+- [ ] tools/learning-status.ts — CLI for detailed metrics
+- [ ] Test: error fingerprinting + rule generation loop
+- [ ] Test: Telegram channel receives/sends messages
+- [ ] Test: Learning Score displayed at session start
+- [ ] v2.0 release tag
 
 ---
 
@@ -590,3 +878,8 @@ OS detection covers: macOS (brew), Debian/Ubuntu (apt), Fedora/RHEL (dnf), Arch 
 | Arch sync | Deferred | Claude Code changes come naturally. Manual sync if needed. |
 | Skill builder | Deferred | Research: self-generated skills = 0pp benefit. Curate manually. |
 | Inter-agent | None | Poseidon is independent. No vault, no Obsidian, no messages. |
+| Channels | Configurable at install | User picks channels during setup. Add/remove later via settings.json. |
+| Voice | Real-time streaming | LiveKit/Pipecat + Deepgram STT + ElevenLabs TTS. Sub-600ms target. |
+| Error capture scope | Configurable at install | All tools (recommended), commands+APIs, or commands only. |
+| Learning dashboard | Terminal at session start | Learning Score + key metrics shown every session. No extra infra. |
+| Error-to-rule threshold | 3 occurrences | Same fingerprint 3+ times across sessions triggers rule candidate. |
