@@ -157,6 +157,113 @@ interface SecretClient {
 5. Bash history — HISTCONTROL=ignoreboth + HISTIGNORE
 6. Tool arguments — env vars or stdin, never CLI arguments
 
+### Onboarding Mode — Secure API Key Intake
+
+When Poseidon detects a new API key is needed (or the user offers one), it enters **Onboarding Mode** — a secure workflow for receiving, storing, and verifying secrets without ever displaying them on screen.
+
+**Triggers (Poseidon suggests onboarding when):**
+- User says "here's my API key" / "I have a key for X" / "set up Perplexity"
+- A tool call fails with 401/403 (auth failure) — Poseidon asks: "Need an API key for this. Enter onboarding mode?"
+- User explicitly says "onboard" / "add secret" / "new API key"
+- During installer setup (Step 3: Secrets)
+
+**The Onboarding Flow:**
+
+```
+User triggers onboarding (explicit or suggested)
+  │
+  ├── Step 1: IDENTIFY
+  │   Poseidon asks: "What service is this key for?"
+  │   → Maps to a secret path: "openai" → kv/openai/api_key
+  │   → Shows what fields are needed: "I need: api_key"
+  │
+  ├── Step 2: SECURE INPUT
+  │   Poseidon says: "Paste your API key below. It will NOT appear on screen."
+  │   → Reads via stdin with terminal echo disabled (stty -echo)
+  │   → Key goes directly to /dev/shm/{random}.tmp (RAM-backed)
+  │   → chmod 600 immediately
+  │   → Terminal shows: "••••••••••••••••" (masked)
+  │   → Key NEVER enters Claude's context window
+  │   → Key NEVER appears in tool output
+  │   → Key NEVER appears in bash history
+  │
+  ├── Step 3: ENCRYPT & STORE
+  │   → Read existing secrets.enc → decrypt to /dev/shm
+  │   → Merge new key into the decrypted JSON
+  │   → Re-encrypt → write secrets.enc
+  │   → shred -u ALL /dev/shm temp files
+  │   → Verify: read back the key to confirm storage
+  │
+  ├── Step 4: VERIFY
+  │   → Poseidon makes a test API call using the new key
+  │   → "✓ OpenAI API key verified — model list returned"
+  │   → If fails: "✗ Key rejected by OpenAI. Re-enter or skip?"
+  │
+  └── Step 5: CONFIRM
+      → "Secret stored at: openai/api_key"
+      → "Access via: SecretClient.read('openai', 'api_key')"
+      → Update settings.json if the key enables new capabilities
+      → Suggest: "OpenAI key enables better research agents. Want me to configure?"
+```
+
+**Security guarantees during onboarding:**
+
+| Guarantee | How |
+|-----------|-----|
+| Key never on screen | stty -echo during paste, masked display |
+| Key never in context window | Read via subprocess stdin, not Claude tool input |
+| Key never on disk (unencrypted) | /dev/shm only (RAM-backed tmpfs) |
+| Key never in bash history | HISTCONTROL=ignorespace, command prefixed with space |
+| Key never in logs | Output scrubber runs on all tool output |
+| Key never in git | secrets.enc in .gitignore, gitleaks pre-commit |
+| Temp files destroyed | shred -u on all /dev/shm files after encrypt |
+
+**Implementation: `tools/onboard.ts`**
+
+```typescript
+#!/usr/bin/env bun
+// Secure API key onboarding — reads key with echo disabled, stores in age-encrypted backend
+
+// Known services and their required fields:
+const SERVICE_MAP = {
+  openai:     { fields: ["api_key"], test: "curl -s -H 'Authorization: Bearer KEY' https://api.openai.com/v1/models | head -1" },
+  anthropic:  { fields: ["api_key"], test: "curl -s -H 'x-api-key: KEY' https://api.anthropic.com/v1/models | head -1" },
+  perplexity: { fields: ["api_key"], test: "curl -s -H 'Authorization: Bearer KEY' https://api.perplexity.ai/chat/completions -d '{}' | head -1" },
+  gemini:     { fields: ["api_key"], test: null },
+  github:     { fields: ["pat"], test: "curl -s -H 'Authorization: token KEY' https://api.github.com/user | jq .login" },
+  elevenlabs: { fields: ["api_key"], test: "curl -s -H 'xi-api-key: KEY' https://api.elevenlabs.io/v1/user | head -1" },
+  deepgram:   { fields: ["api_key"], test: null },
+  twilio:     { fields: ["account_sid", "auth_token"], test: null },
+  ntfy:       { fields: ["topic", "token"], test: "curl -s -d 'test' https://ntfy.sh/TOPIC" },
+  custom:     { fields: [], test: null },
+};
+
+// Flow:
+// 1. Ask which service (or detect from context)
+// 2. For each field: read with stty -echo → store in /dev/shm
+// 3. Encrypt into secrets.enc
+// 4. Verify if test available
+// 5. Clean up all temp files
+```
+
+**Pre-prompt hook integration:**
+
+The pre-prompt hook detects onboarding triggers:
+```
+If prompt contains "API key" / "here's my key" / "set up [service]" / "onboard":
+  → Inject system-reminder: "Onboarding mode detected. Run: bun tools/onboard.ts [service]"
+  → Or handle inline if the key is pasted directly (scrub from context immediately)
+```
+
+**Inline onboarding (when user pastes a key in chat):**
+
+If the user accidentally pastes a key directly into the prompt:
+1. Pre-prompt hook detects secret patterns (sk-*, ghp_*, etc.)
+2. Immediately scrubs the key from the prompt before Claude sees it
+3. Stores the scrubbed key securely via SecretClient
+4. Injects: "I detected and secured an API key from your message. It's stored safely."
+5. The key NEVER reaches Claude's context window
+
 ### 5. Configurable Personality System (PAI Gap: Hardcoded Identity)
 
 **PAI's problem:** Identity is hardcoded to one user (Ned) and one agent personality. Not portable.
