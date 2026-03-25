@@ -1,9 +1,4 @@
-/**
- * error-fingerprint.ts — Error classification and fingerprinting.
- * Templatizes error messages and generates stable fingerprints
- * so recurring errors are deduplicated in the error log.
- */
-
+/** error-fingerprint.ts — Error classification and fingerprinting. */
 import { createHash } from "crypto";
 import { readFileSync } from "fs";
 import { SECURITY_DIR } from "../lib/paths";
@@ -16,14 +11,8 @@ export interface ErrorSignal {
   message: string;
 }
 
-interface PatternEntry {
-  pattern: string;
-  class: string;
-}
-
-interface PatternsConfig {
-  patterns: Record<string, PatternEntry[]>;
-}
+interface PatternEntry { pattern: string; class: string; }
+interface PatternsConfig { patterns: Record<string, PatternEntry[]>; }
 
 let cachedPatterns: PatternsConfig | null = null;
 
@@ -31,7 +20,6 @@ function loadPatterns(): PatternsConfig {
   if (cachedPatterns) return cachedPatterns;
   try {
     const raw = readFileSync(join(SECURITY_DIR(), "error-patterns.yaml"), "utf-8");
-    // Minimal YAML parse — structure is flat enough for regex extraction
     const patterns: Record<string, PatternEntry[]> = {};
     let currentDomain = "";
     for (const line of raw.split("\n")) {
@@ -39,9 +27,7 @@ function loadPatterns(): PatternsConfig {
       if (domainMatch) { currentDomain = domainMatch[1]; patterns[currentDomain] = []; continue; }
       const patMatch = line.match(/^\s+- pattern:\s*"(.+)"$/);
       if (patMatch && currentDomain) {
-        const entry: Partial<PatternEntry> = { pattern: patMatch[1] };
-        // Next line should be class
-        patterns[currentDomain].push(entry as PatternEntry);
+        patterns[currentDomain].push({ pattern: patMatch[1], class: "" });
         continue;
       }
       const classMatch = line.match(/^\s+class:\s*"(.+)"$/);
@@ -79,33 +65,19 @@ export function generateFingerprint(error: ErrorSignal): string {
 /** Classify a tool output into an ErrorSignal, or null if no error detected. */
 export function classifyError(tool: string, output: string, exitCode?: number | null): ErrorSignal | null {
   if (!output) return null;
-  const lower = output.toLowerCase();
   const config = loadPatterns();
-
-  for (const [domain, entries] of Object.entries(config.patterns)) {
+  for (const entries of Object.values(config.patterns)) {
     for (const entry of entries) {
       try {
         if (new RegExp(entry.pattern, "i").test(output)) {
-          return {
-            tool,
-            exitCode: exitCode ?? null,
-            errorClass: entry.class,
-            message: output.slice(0, 500),
-          };
+          return { tool, exitCode: exitCode ?? null, errorClass: entry.class, message: output.slice(0, 500) };
         }
-      } catch { /* invalid regex, skip */ }
+      } catch { /* skip */ }
     }
   }
-
-  // Fallback: detect generic errors for Bash with non-zero exit
+  // Fallback for Bash with non-zero exit
   if (tool === "Bash" && exitCode && exitCode !== 0) {
-    return {
-      tool,
-      exitCode,
-      errorClass: "TOOL_EXECUTION",
-      message: output.slice(0, 500),
-    };
+    return { tool, exitCode, errorClass: "TOOL_EXECUTION", message: output.slice(0, 500) };
   }
-
   return null;
 }
