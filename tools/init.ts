@@ -85,6 +85,183 @@ function slugify(name: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Prerequisite checks & auto-install
+// ---------------------------------------------------------------------------
+
+interface PrereqResult {
+  name: string;
+  installed: boolean;
+  version?: string;
+  required: boolean;
+}
+
+function which(cmd: string): string | null {
+  try {
+    return execSync(`which ${cmd} 2>/dev/null`, { stdio: "pipe" }).toString().trim();
+  } catch {
+    return null;
+  }
+}
+
+function getVersion(cmd: string, flag = "--version"): string | null {
+  try {
+    const out = execSync(`${cmd} ${flag} 2>&1`, { stdio: "pipe" }).toString().trim();
+    const match = out.match(/(\d+\.\d+[\.\d]*)/);
+    return match ? match[1] : out.slice(0, 40);
+  } catch {
+    return null;
+  }
+}
+
+function detectOS(): "macos" | "debian" | "fedora" | "arch" | "unknown" {
+  try {
+    const uname = execSync("uname -s", { stdio: "pipe" }).toString().trim();
+    if (uname === "Darwin") return "macos";
+    if (existsSync("/etc/debian_version")) return "debian";
+    if (existsSync("/etc/fedora-release") || existsSync("/etc/redhat-release")) return "fedora";
+    if (existsSync("/etc/arch-release")) return "arch";
+  } catch {}
+  return "unknown";
+}
+
+function installCmd(pkg: string, os: ReturnType<typeof detectOS>): string | null {
+  const cmds: Record<string, Record<string, string>> = {
+    bun: {
+      macos: "curl -fsSL https://bun.sh/install | bash",
+      debian: "curl -fsSL https://bun.sh/install | bash",
+      fedora: "curl -fsSL https://bun.sh/install | bash",
+      arch: "curl -fsSL https://bun.sh/install | bash",
+      unknown: "curl -fsSL https://bun.sh/install | bash",
+    },
+    age: {
+      macos: "brew install age",
+      debian: "sudo apt-get install -y age",
+      fedora: "sudo dnf install -y age",
+      arch: "sudo pacman -S --noconfirm age",
+      unknown: "",
+    },
+    "claude-code": {
+      macos: "npm install -g @anthropic-ai/claude-code",
+      debian: "npm install -g @anthropic-ai/claude-code",
+      fedora: "npm install -g @anthropic-ai/claude-code",
+      arch: "npm install -g @anthropic-ai/claude-code",
+      unknown: "npm install -g @anthropic-ai/claude-code",
+    },
+    git: {
+      macos: "brew install git",
+      debian: "sudo apt-get install -y git",
+      fedora: "sudo dnf install -y git",
+      arch: "sudo pacman -S --noconfirm git",
+      unknown: "",
+    },
+  };
+  return cmds[pkg]?.[os] || null;
+}
+
+async function checkAndInstallPrereqs(): Promise<boolean> {
+  console.log("\n  Checking prerequisites...\n");
+
+  const os = detectOS();
+  const prereqs: PrereqResult[] = [];
+
+  // bun — required (but if we're running, it's already installed)
+  const bunPath = which("bun");
+  prereqs.push({
+    name: "bun",
+    installed: !!bunPath,
+    version: bunPath ? getVersion("bun") || undefined : undefined,
+    required: true,
+  });
+
+  // git — required
+  const gitPath = which("git");
+  prereqs.push({
+    name: "git",
+    installed: !!gitPath,
+    version: gitPath ? getVersion("git") || undefined : undefined,
+    required: true,
+  });
+
+  // claude code — required
+  const claudePath = which("claude");
+  prereqs.push({
+    name: "claude-code",
+    installed: !!claudePath,
+    version: claudePath ? getVersion("claude", "--version") || undefined : undefined,
+    required: true,
+  });
+
+  // age — optional but recommended
+  const agePath = which("age");
+  prereqs.push({
+    name: "age",
+    installed: !!agePath,
+    version: agePath ? getVersion("age") || undefined : undefined,
+    required: false,
+  });
+
+  // Display status
+  for (const p of prereqs) {
+    const status = p.installed
+      ? `✓ ${p.name} ${p.version ? `(${p.version})` : ""}`
+      : `✗ ${p.name} ${p.required ? "(required)" : "(optional — recommended)"}`;
+    console.log(`    ${status}`);
+  }
+
+  const missing = prereqs.filter((p) => !p.installed);
+  if (missing.length === 0) {
+    console.log("\n    All prerequisites satisfied.\n");
+    return true;
+  }
+
+  const missingRequired = missing.filter((p) => p.required);
+  const missingOptional = missing.filter((p) => !p.required);
+
+  // Auto-install missing
+  console.log("");
+  for (const p of missing) {
+    const cmd = installCmd(p.name, os);
+    if (!cmd) {
+      if (p.required) {
+        console.log(`    Cannot auto-install ${p.name} on this OS. Please install it manually.`);
+      } else {
+        console.log(`    Skipping optional ${p.name} — install manually if needed.`);
+      }
+      continue;
+    }
+
+    const label = p.required ? "Required" : "Recommended";
+    const shouldInstall = await askYesNo(`${label}: Install ${p.name}? (${cmd})`);
+
+    if (shouldInstall) {
+      console.log(`    Installing ${p.name}...`);
+      try {
+        execSync(cmd, { stdio: "inherit" });
+        p.installed = true;
+        console.log(`    ✓ ${p.name} installed successfully.`);
+      } catch (err) {
+        console.error(`    ✗ Failed to install ${p.name}. Please install manually.`);
+        if (p.required) {
+          console.error(`    Install command: ${cmd}`);
+        }
+      }
+    } else if (p.required) {
+      console.log(`    WARNING: ${p.name} is required. Poseidon may not work correctly without it.`);
+    }
+  }
+
+  // Check if all required are now installed
+  const stillMissing = prereqs.filter((p) => p.required && !p.installed);
+  if (stillMissing.length > 0) {
+    console.log(`\n    Missing required prerequisites: ${stillMissing.map((p) => p.name).join(", ")}`);
+    const proceed = await askYesNo("Continue anyway?", false);
+    return proceed;
+  }
+
+  return true;
+}
+
+// ---------------------------------------------------------------------------
 // Banner
 // ---------------------------------------------------------------------------
 
@@ -113,7 +290,7 @@ interface Identity {
 }
 
 async function stepIdentity(): Promise<Identity> {
-  printStep(1, 5, "Identity");
+  printStep(1, 6, "Identity");
 
   const agent_name = await ask("What should your AI be called?", "Poseidon");
   const user_name = await ask("What's your name?");
@@ -146,7 +323,7 @@ interface Telos {
 }
 
 async function stepTelos(): Promise<Telos> {
-  printStep(2, 5, "Mission (TELOS)");
+  printStep(2, 6, "Mission (TELOS)");
 
   const mission = await ask("In one sentence, what are you working toward?");
 
@@ -174,7 +351,7 @@ interface SecretsResult {
 }
 
 async function stepSecrets(installDir: string): Promise<SecretsResult> {
-  printStep(3, 5, "Secret Encryption");
+  printStep(3, 6, "Secret Encryption");
 
   let ageInstalled = false;
   try {
@@ -260,7 +437,7 @@ interface ProjectSetup {
 }
 
 async function stepProject(): Promise<ProjectSetup | null> {
-  printStep(4, 5, "First Project (optional)");
+  printStep(4, 6, "First Project (optional)");
 
   const hasProject = await askYesNo("Do you have a project to set up?", false);
   if (!hasProject) {
@@ -287,7 +464,7 @@ async function stepBuild(
   telos: Telos,
   project: ProjectSetup | null
 ): Promise<void> {
-  printStep(5, 5, "Building");
+  printStep(5, 6, "Building");
 
   // 1. Create directory structure
   const dirs = [
@@ -496,6 +673,14 @@ async function stepBuild(
 
 async function main(): Promise<void> {
   printBanner();
+
+  // Step 0: Prerequisites
+  const prereqOk = await checkAndInstallPrereqs();
+  if (!prereqOk) {
+    console.log("    Setup cancelled due to missing prerequisites.");
+    rl.close();
+    return;
+  }
 
   // Determine install location
   const defaultDir = join(homedir(), ".poseidon");

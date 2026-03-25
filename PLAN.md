@@ -402,29 +402,45 @@ $ bunx poseidon init
 
   Welcome to Poseidon — Personal AI Infrastructure
 
-  Step 1/5: Identity
+  Checking prerequisites...
+
+    ✓ bun (1.2.4)
+    ✓ git (2.43.0)
+    ✗ claude-code (required)
+    ✗ age (optional — recommended)
+
+    Required: Install claude-code? (npm install -g @anthropic-ai/claude-code) (Y/n): y
+    Installing claude-code...
+    ✓ claude-code installed successfully.
+    Recommended: Install age? (sudo apt-get install -y age) (Y/n): y
+    Installing age...
+    ✓ age installed successfully.
+
+    All prerequisites satisfied.
+
+  Step 1/6: Identity
     What should your AI be called? [Poseidon] ___
     What's your name? ___
     Communication style: (direct / friendly / formal / casual) ___
 
-  Step 2/5: Mission (TELOS)
+  Step 2/6: Mission (TELOS)
     In one sentence, what are you working toward? ___
     What are your top 3 goals right now?
       1. ___
       2. ___
       3. ___
 
-  Step 3/5: Secrets
+  Step 3/6: Secrets
     Setting up age encryption for secret management...
     Generated key at ~/.config/poseidon/age-key.txt
     Do you have API keys to store now? (y/n) ___
 
-  Step 4/5: Projects
+  Step 4/6: Projects
     Do you have active projects to set up? (y/n) ___
     Project name: ___
     One-line description: ___
 
-  Step 5/5: Building
+  Step 5/6: Building
     ✓ Created directory structure
     ✓ Generated CLAUDE.md from template
     ✓ Installed 10 starter skills
@@ -432,9 +448,20 @@ $ bunx poseidon init
     ✓ Configured hooks in settings.json
     ✓ Set up age encryption
 
-  Done! Start Claude Code in your project directory.
-  Poseidon will load automatically.
+  Done! Start Claude Code in any project directory.
+  Poseidon loads automatically.
 ```
+
+**Prerequisites auto-detected and auto-installed:**
+
+| Prerequisite | Required | Auto-install |
+|-------------|----------|-------------|
+| **bun** | Yes | `curl -fsSL https://bun.sh/install \| bash` |
+| **git** | Yes | apt/dnf/pacman/brew depending on OS |
+| **claude-code** | Yes | `npm install -g @anthropic-ai/claude-code` |
+| **age** | No (recommended) | apt/dnf/pacman/brew depending on OS |
+
+OS detection covers: macOS (brew), Debian/Ubuntu (apt), Fedora/RHEL (dnf), Arch (pacman). Unknown OS shows manual install instructions.
 
 ---
 
