@@ -10,9 +10,22 @@ description: >-
 
 ## Overview
 
-Multi-tier research system with automatic depth selection, parallel agent execution,
-mandatory citation verification, and quality scoring. Provider-agnostic: works with
-WebSearch alone, scales with Perplexity/Gemini APIs when available.
+Multi-tier research system with automatic depth selection, named research agents per search provider, mandatory citation verification, and quality scoring. Scales from WebSearch-only to 4-provider parallel research.
+
+## Research Providers
+
+Each research agent is a named type tied to a specific search API:
+
+| Icon | Agent Type | Provider | Strength | Required |
+|------|-----------|----------|----------|----------|
+| 🔵 | ClaudeResearcher | Claude WebSearch | Academic depth, analysis | Always available |
+| 🟣 | PerplexityResearcher | Perplexity API | Cited answers, real-time | API key optional |
+| 🟢 | GeminiResearcher | Google Gemini | Cross-domain synthesis | API key optional |
+| 🟠 | GrokResearcher | xAI Grok | Contrarian, unfiltered | API key optional |
+
+**Every research execution MUST announce which providers are being used before launching agents.** The user should always see: "🔍 Launching: 🔵 Claude + 🟣 Perplexity + 🟢 Gemini"
+
+**Fallback:** If no API keys configured, all agents use 🔵 ClaudeResearcher (WebSearch). Different mandates, same provider.
 
 ## Research Tiers
 

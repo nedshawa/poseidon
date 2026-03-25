@@ -1,90 +1,120 @@
 # Standard Research (Tier 2)
 
-Three parallel agents with distinct mandates. Default tier for "do research on X".
+Three parallel agents using distinct search providers. Default tier for "do research on X".
 
 ## Parameters
 
-| Field   | Value                                      |
-|---------|--------------------------------------------|
-| Agents  | 3 (parallel)                               |
-| Queries | 3-10 total                                 |
-| Time    | 1-3 minutes                                |
-| Tools   | WebSearch, Perplexity, Gemini (as available)|
+| Field   | Value                                                    |
+|---------|----------------------------------------------------------|
+| Agents  | 3 (parallel, named by provider)                          |
+| Queries | 3-10 total                                               |
+| Time    | 1-3 minutes                                              |
+| Timeout | 60 seconds hard ceiling                                  |
 
-## When to Use
+## Agent Types and Providers
 
-- Multi-part questions: "Research X for me"
-- Comparisons: "Compare A vs B vs C"
-- Topic overviews requiring multiple perspectives
-- Questions where a single source is insufficient
+Each agent uses a specific search provider for its strengths:
+
+| Agent | Type | Provider | Strength |
+|-------|------|----------|----------|
+| 🔵 Claude | ClaudeResearcher | Claude WebSearch | Academic depth, detailed analysis, scholarly |
+| 🟣 Perplexity | PerplexityResearcher | Perplexity API | Cited answers, up-to-date, web-native |
+| 🟢 Gemini | GeminiResearcher | Google Gemini | Multi-perspective, cross-domain synthesis |
+
+**Fallback:** If Perplexity/Gemini APIs are not configured, all agents use ClaudeResearcher (WebSearch). Mandates still differ — different angles, same provider.
 
 ## Workflow
 
-### Step 1: Mandate Assignment
+### Step 1: Announce Agents
 
-Split the research question into three non-overlapping mandates:
+Before launching, tell the user which providers are being used:
 
-| Agent | Mandate Example                                   |
-|-------|---------------------------------------------------|
-| A     | Technical details, specifications, architecture   |
-| B     | Comparisons, alternatives, competitive landscape  |
-| C     | Recent developments, community sentiment, trends  |
-
-Adapt mandates to fit the specific question. The goal is zero overlap and full coverage.
-
-### Step 2: Parallel Execution
-
-Each agent independently:
-1. Formulates 1-4 queries based on its mandate
-2. Executes searches
-3. Collects and summarizes findings with inline citations
-4. Notes confidence level per finding
-
-### Step 3: Cross-Reference
-
-Merge agent outputs. For each claim:
-- Corroborated by 2+ agents: mark as HIGH confidence
-- Single source only: mark as MEDIUM confidence
-- Agents disagree: present BOTH positions with sources, flag as CONFLICTED
-
-### Step 4: Conflict Disclosure
-
-When sources disagree, present the disagreement explicitly:
 ```
-> **Conflicting information:** Source A claims [X] while Source B claims [Y].
-> The more recent/authoritative source appears to be [choice] because [reason].
+🔍 Launching Standard Research (Tier 2):
+  🔵 Claude WebSearch — technical details and analysis
+  🟣 Perplexity — comparisons and alternatives
+  🟢 Gemini — recent developments and trends
+  ⏱️ Timeout: 60 seconds
 ```
 
-### Step 5: Quality Check
+If providers unavailable:
+```
+🔍 Launching Standard Research (Tier 2):
+  🔵 Agent 1 (WebSearch) — technical details
+  🔵 Agent 2 (WebSearch) — comparisons
+  🔵 Agent 3 (WebSearch) — trends
+  ⏱️ Timeout: 60 seconds
+  ℹ️ Perplexity/Gemini not configured — using WebSearch for all agents
+```
 
-Run quality scorer. All four axes must meet 6/10 minimum.
-If any axis fails, identify the gap and run a targeted follow-up search.
+### Step 2: Mandate Assignment
 
-### Step 6: Citation Verification
+Split the research into three non-overlapping mandates:
 
-Verify all URLs before delivery. Remove broken links.
+| Agent | Mandate |
+|-------|---------|
+| 🔵 Claude | Technical details, specifications, architecture |
+| 🟣 Perplexity | Comparisons, alternatives, competitive landscape |
+| 🟢 Gemini | Recent developments, community sentiment, trends |
+
+Adapt to fit the specific question. Goal: zero overlap, full coverage.
+
+### Step 3: Parallel Execution
+
+Launch all agents simultaneously. Each agent:
+1. Gets ONE mandate with 1-4 queries
+2. Executes searches using its provider
+3. Returns findings with inline citations
+4. Notes confidence per finding
+
+### Step 4: Timeout Enforcement — 60 SECONDS
+
+If any agent hasn't returned at 60 seconds:
+- Proceed with agents that HAVE returned
+- Note: "🟣 Perplexity: timed out" in results
+
+### Step 5: Cross-Reference with Attribution
+
+Merge findings. Attribute each finding to its source:
+
+```
+### Key Finding 1
+[Finding text] — confirmed by 🔵 Claude + 🟣 Perplexity (HIGH confidence)
+
+### Key Finding 2
+[Finding text] — per 🟢 Gemini only (MEDIUM confidence, single source)
+
+### Conflict
+🔵 Claude says [X] while 🟣 Perplexity says [Y]. More recent source: [choice].
+```
+
+### Step 6: Quality Check + Citation Verification
+
+Run quality scorer (6/10 minimum per axis). Verify all URLs.
 
 ## Output Format
 
 ```
 ## Research: [Topic]
 
-**Tier:** 2 — Standard | **Sources:** [count] | **Agents:** 3
+**Tier:** 2 — Standard | **Timeout:** 60s
+**Agents:** 🔵 Claude (WebSearch) • 🟣 Perplexity • 🟢 Gemini
+**Status:** 3/3 returned in [elapsed]s
 
 ### Key Findings
-[Synthesized findings organized by theme, not by agent]
+[Findings organized by theme, each attributed to source agent]
 
-### Comparisons (if applicable)
-| Dimension | Option A | Option B |
-|-----------|----------|----------|
-| ...       | ...      | ...      |
+### Per-Agent Insights
+- 🔵 **Claude:** [unique analytical depth]
+- 🟣 **Perplexity:** [unique cited findings]
+- 🟢 **Gemini:** [unique cross-domain connections]
 
 ### Conflicts
-[Any disagreements between sources, with both positions cited]
+[Disagreements with both positions and sources]
 
 ### Sources
-1. [Name](url) — [what it contributed]
-2. ...
+1. [Name](url) — via 🔵 Claude
+2. [Name](url) — via 🟣 Perplexity
 
-### Confidence: [HIGH/MEDIUM/LOW] — [reasoning]
+### Confidence: [HIGH/MEDIUM/LOW]
 ```
