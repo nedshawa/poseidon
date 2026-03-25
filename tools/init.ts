@@ -661,7 +661,26 @@ async function stepBuild(
     console.log("    [ok] Installed dashboard web app");
   }
 
-  // 14. Run rebuild to generate CLAUDE.md
+  // 14. API Key Setup (runs tools/setup.ts for key collection)
+  const setupScript = join(installDir, "tools", "setup.ts");
+  if (existsSync(setupScript)) {
+    const setupKeys = await askYesNo("Set up API keys now? (Perplexity, OpenAI, FMP, etc.)");
+    if (setupKeys) {
+      try {
+        execSync(`POSEIDON_DIR="${installDir}" bun "${setupScript}"`, {
+          stdio: "inherit",
+          cwd: installDir,
+        });
+        console.log("    [ok] API keys configured");
+      } catch {
+        console.log("    [warn] Key setup interrupted — run 'bun tools/setup.ts' later");
+      }
+    } else {
+      console.log("    Skipping key setup — run 'bun tools/setup.ts' anytime to add keys");
+    }
+  }
+
+  // 15. Run rebuild to generate CLAUDE.md
   try {
     const rebuildScript = join(installDir, "tools", "rebuild.ts");
     if (existsSync(rebuildScript)) {
