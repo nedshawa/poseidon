@@ -76,11 +76,138 @@ function formatEscalation(r: ComplexityResult): string {
   return r.escalated ? `\n\u26a1 Escalated to Algorithm (complexity: ${r.score}, signals: ${r.signals.join(", ")})` : "";
 }
 
+// ── Secret Interception (BEFORE Claude sees anything) ───────────
+// Detects API keys in the prompt, BLOCKS the prompt, stores the key securely.
+// The key NEVER reaches Claude's context window.
+
+import { poseidonPath } from "./lib/paths";
+import { mkdirSync, appendFileSync } from "fs";
+
+const KEY_PATTERNS = [
+  { re: /sk-[a-zA-Z0-9]{20,}/, service: "openai" },
+  { re: /sk-ant-[a-zA-Z0-9\-]{20,}/, service: "anthropic" },
+  { re: /ghp_[a-zA-Z0-9]{36}/, service: "github" },
+  { re: /gho_[a-zA-Z0-9]{36}/, service: "github" },
+  { re: /pplx-[a-zA-Z0-9]{20,}/, service: "perplexity" },
+  { re: /AKIA[0-9A-Z]{16}/, service: "aws" },
+  { re: /xoxb-[a-zA-Z0-9\-]{20,}/, service: "slack" },
+];
+
+function detectAndStoreSecret(prompt: string): { blocked: boolean; message: string } | null {
+  const trimmed = prompt.trim();
+
+  // Pattern 1: "onboard SERVICE KEY"
+  const onboardMatch = trimmed.match(/^onboard\s+(\w[\w-]*)\s+(.{8,})$/i);
+  if (onboardMatch) {
+    const service = onboardMatch[1].toLowerCase();
+    const key = onboardMatch[2].trim();
+    return storeKey(service, "api_key", key);
+  }
+
+  // Pattern 2: "SERVICE KEY" (e.g., "fmp abc123def456")
+  const serviceKeyMatch = trimmed.match(/^(\w[\w-]*)\s+key\s*[:=]?\s*(.{8,})$/i);
+  if (serviceKeyMatch) {
+    const service = serviceKeyMatch[1].toLowerCase();
+    const key = serviceKeyMatch[2].trim();
+    return storeKey(service, "api_key", key);
+  }
+
+  // Pattern 3: Raw key paste (auto-detect service from pattern)
+  for (const { re, service } of KEY_PATTERNS) {
+    const match = trimmed.match(re);
+    if (match && trimmed.length < 200) { // Short prompt = likely just a key paste
+      return storeKey(service, "api_key", match[0]);
+    }
+  }
+
+  // Pattern 4: "key: VALUE" or "api_key: VALUE"
+  const keyValueMatch = trimmed.match(/^(?:api[_-]?)?key\s*[:=]\s*(.{8,})$/i);
+  if (keyValueMatch) {
+    return storeKey("_pending", "api_key", keyValueMatch[1].trim());
+  }
+
+  return null; // Not a secret — continue normal processing
+}
+
+function storeKey(service: string, field: string, key: string): { blocked: boolean; message: string } {
+  try {
+    // Store via age encryption if available
+    const { execSync } = require("child_process");
+    const { randomBytes } = require("crypto");
+    const { homedir } = require("os");
+
+    const keyPath = (() => {
+      try {
+        const s = JSON.parse(readFileSync(getSettingsPath(), "utf-8"));
+        return s?.security?.age_key_path || join(homedir(), ".config", "poseidon", "age-key.txt");
+      } catch { return join(homedir(), ".config", "poseidon", "age-key.txt"); }
+    })();
+
+    const encPath = poseidonPath("secrets.enc");
+    const shmDir = existsSync("/dev/shm") ? "/dev/shm" : "/tmp";
+    const tmpFile = join(shmDir, `poseidon-key-${randomBytes(6).toString("hex")}.json`);
+
+    if (existsSync(keyPath) && existsSync(encPath)) {
+      // Decrypt existing, merge, re-encrypt
+      try {
+        execSync(`age -d -i "${keyPath}" "${encPath}" > "${tmpFile}"`, { stdio: "pipe" });
+      } catch {
+        writeFileSync(tmpFile, "{}");
+      }
+      const secrets = JSON.parse(readFileSync(tmpFile, "utf-8"));
+      secrets[service] = { ...(secrets[service] || {}), [field]: key };
+      writeFileSync(tmpFile, JSON.stringify(secrets, null, 2));
+
+      const keyContent = readFileSync(keyPath, "utf-8");
+      const pubMatch = keyContent.match(/public key: (age1\w+)/);
+      if (pubMatch) {
+        execSync(`age -r "${pubMatch[1]}" -o "${encPath}" "${tmpFile}"`, { stdio: "pipe" });
+      }
+      // Shred temp file
+      try { execSync(`shred -u "${tmpFile}" 2>/dev/null`, { stdio: "ignore" }); } catch {}
+      try { require("fs").unlinkSync(tmpFile); } catch {}
+
+      const masked = key.slice(0, 4) + "..." + key.slice(-4);
+      return {
+        blocked: true,
+        message: `✓ ${service} key stored securely (${masked}). The key never reached the AI.\n  Path: ${service}/${field}\n  Read: bun tools/secret.ts read ${service} ${field}`
+      };
+    } else {
+      // No age encryption — store in .env as fallback
+      const envPath = poseidonPath(".env");
+      const envKey = `${service.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_${field.toUpperCase()}`;
+      appendFileSync(envPath, `${envKey}=${key}\n`);
+      return {
+        blocked: true,
+        message: `✓ ${service} key stored in .env (${envKey}). No age encryption — run bun tools/secret.ts init for encrypted storage.\n  The key never reached the AI.`
+      };
+    }
+  } catch (err: any) {
+    return {
+      blocked: true,
+      message: `✗ Failed to store key: ${err.message}. The key was blocked and NOT sent to the AI.`
+    };
+  }
+}
+
 async function main() {
   try {
     const input = await readHookInput();
     const rawPrompt = input.prompt || "";
     if (!rawPrompt.trim()) return;
+
+    // ── SECRET INTERCEPTION (runs FIRST, before Claude sees anything) ──
+    const secretResult = detectAndStoreSecret(rawPrompt);
+    if (secretResult?.blocked) {
+      // BLOCK the prompt — Claude never processes it
+      console.log(JSON.stringify({
+        decision: "block",
+        reason: secretResult.message,
+      }));
+      console.error(`[pre-prompt] Secret intercepted and stored. Prompt blocked.`);
+      return;
+    }
+
     const parts: string[] = [];
     // Check for project switch
     const switchTo = detectSwitch(rawPrompt);
