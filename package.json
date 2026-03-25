@@ -1,6 +1,6 @@
 {
   "name": "poseidon",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Personal AI Infrastructure for Claude Code",
   "scripts": {
     "init": "bun tools/init.ts",
@@ -14,6 +14,7 @@
     "dashboard": "bun tools/dashboard.ts"
   },
   "bin": {
-    "poseidon": "tools/init.ts"
+    "poseidon": "tools/poseidon.ts",
+    "poseidon-ipc": "tools/poseidon-ipc.ts"
   }
 }

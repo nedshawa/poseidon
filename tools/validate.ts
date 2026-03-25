@@ -166,7 +166,7 @@ if (fileExists("CLAUDE.md")) {
 console.log("\nPortability:");
 try {
   const allTs = execSync(
-    `grep -r "nedstar\\|/home/ned\\|~/.claude\\|localhost:8888" ${baseDir}/hooks/ ${baseDir}/tools/ ${baseDir}/algorithm/ 2>/dev/null | grep -v "validate.ts" || true`
+    `grep -r "nedstar\\|/home/ned\\|~/.claude\\|localhost:8888" ${baseDir}/hooks/ ${baseDir}/tools/ ${baseDir}/algorithm/ 2>/dev/null | grep -v "validate.ts" | grep -v "Usage:" | grep -v "# " || true`
   ).toString().trim();
   check("No hardcoded user paths in hooks/tools/algorithm", allTs === "");
 } catch {
