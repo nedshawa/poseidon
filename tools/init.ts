@@ -630,7 +630,14 @@ async function stepBuild(
     console.log(`    [ok] Created project: ${project.name} (${project.slug})`);
   }
 
-  // 13. Run rebuild to generate CLAUDE.md
+  // 13. Copy dashboard
+  const dashboardSource = join(SOURCE_DIR, "dashboard");
+  if (existsSync(dashboardSource)) {
+    copyDirRecursive(dashboardSource, join(installDir, "dashboard"));
+    console.log("    [ok] Installed dashboard web app");
+  }
+
+  // 14. Run rebuild to generate CLAUDE.md
   try {
     const rebuildScript = join(installDir, "tools", "rebuild.ts");
     if (existsSync(rebuildScript)) {
@@ -642,6 +649,49 @@ async function stepBuild(
     }
   } catch (err) {
     console.log("    [warn] Could not auto-generate CLAUDE.md — run 'bun tools/rebuild.ts' manually");
+  }
+
+  // 15. Install dashboard as systemd service
+  const systemdDir = join(homedir(), ".config", "systemd", "user");
+  const serviceName = "poseidon-dashboard";
+  const bunPath = (() => { try { return execSync("which bun", { stdio: "pipe" }).toString().trim(); } catch { return "bun"; } })();
+
+  try {
+    ensureDir(systemdDir);
+    const serviceContent = `[Unit]
+Description=Poseidon Dashboard
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=${bunPath} ${join(installDir, "dashboard", "server.ts")}
+WorkingDirectory=${installDir}
+Restart=always
+RestartSec=5
+Environment=POSEIDON_DIR=${installDir}
+Environment=PORT=3456
+
+[Install]
+WantedBy=default.target
+`;
+    writeFileSync(join(systemdDir, `${serviceName}.service`), serviceContent);
+
+    // Enable and start the service
+    try {
+      execSync(`systemctl --user daemon-reload`, { stdio: "pipe" });
+      execSync(`systemctl --user enable ${serviceName}`, { stdio: "pipe" });
+      execSync(`systemctl --user start ${serviceName}`, { stdio: "pipe" });
+      // Enable lingering so user services survive logout
+      try { execSync(`loginctl enable-linger $(whoami)`, { stdio: "pipe" }); } catch {}
+      console.log("    [ok] Dashboard service installed and started (port 3456)");
+      console.log("         Survives restarts. Access at http://localhost:3456");
+    } catch {
+      console.log("    [warn] Could not start systemd service (systemctl may not be available)");
+      console.log("         Start manually: bun " + join(installDir, "tools", "dashboard.ts"));
+    }
+  } catch {
+    console.log("    [warn] Could not install systemd service");
+    console.log("         Start manually: bun " + join(installDir, "tools", "dashboard.ts"));
   }
 
   // Success message
@@ -657,9 +707,16 @@ async function stepBuild(
     2. ${identity.agent_name} loads automatically via settings.json
     3. Your AI learns from your corrections over time
 
+  Dashboard:
+    http://localhost:3456 (running as background service)
+    Status:  systemctl --user status poseidon-dashboard
+    Restart: systemctl --user restart poseidon-dashboard
+    Logs:    journalctl --user -u poseidon-dashboard -f
+
   Useful commands:
-    bun ${join(installDir, "tools", "rebuild.ts")}   — Regenerate CLAUDE.md after config changes
-    bun ${join(installDir, "tools", "secret.ts")}    — Manage encrypted secrets (requires age)
+    bun ${join(installDir, "tools", "rebuild.ts")}   — Regenerate CLAUDE.md
+    bun ${join(installDir, "tools", "secret.ts")}    — Manage encrypted secrets
+    bun ${join(installDir, "tools", "dashboard.ts")} — Start dashboard manually
 
   Edit settings:    ${join(installDir, "settings.json")}
   Edit personality:  ${join(installDir, "CLAUDE.md.template")}
