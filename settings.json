@@ -54,6 +54,13 @@
       "Bearer [a-zA-Z0-9\\-._~+/]+=*"
     ]
   },
+  "channels": {
+    "enabled": ["terminal"],
+    "rate_limit": {
+      "max_messages_per_minute": 10,
+      "batch_window_seconds": 5
+    }
+  },
   "permissions": {
     "allow": [
       "Bash", "Read", "Write", "Edit", "Glob", "Grep",
@@ -115,6 +122,62 @@
           {
             "type": "command",
             "command": "bun ${POSEIDON_DIR}/hooks/pre-tool.ts"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun ${POSEIDON_DIR}/hooks/error-capture.ts"
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun ${POSEIDON_DIR}/hooks/error-capture.ts"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun ${POSEIDON_DIR}/hooks/error-capture.ts"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun ${POSEIDON_DIR}/hooks/error-capture.ts"
+          }
+        ]
+      },
+      {
+        "matcher": "WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun ${POSEIDON_DIR}/hooks/error-capture.ts"
+          }
+        ]
+      },
+      {
+        "matcher": "WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun ${POSEIDON_DIR}/hooks/error-capture.ts"
           }
         ]
       }

@@ -191,6 +191,21 @@ async function main() {
     const assistantMsg = input.last_assistant_message || "";
     if (assistantMsg) {
       updateProjectContext(summarize(assistantMsg));
+
+      // Track thinking skill invocations
+      try {
+        const { detectThinkingMode, logThinkingRun } = await import("./handlers/thinking-tracker");
+        const mode = detectThinkingMode(assistantMsg);
+        if (mode) {
+          logThinkingRun({
+            timestamp: new Date().toISOString(),
+            session_id: sessionId,
+            mode,
+            chained: false,
+            prompt_summary: (userMessage || "").slice(0, 80),
+          });
+        }
+      } catch {}
     }
   } catch (err) {
     console.error(`[post-response] Error (non-blocking): ${err}`);
