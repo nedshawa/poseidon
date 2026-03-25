@@ -1022,7 +1022,437 @@ Tool output: "Connection to api.openai.com failed with key sk-abc123def456..."
 
 ---
 
-## Build Phases (5 Weeks)
+## Phase 7: Skill Upgrades — Surpassing PAI
+
+*Analysis: PAI has 90,206 lines across 557 files in 6 target skills. ~42,000 lines are universal value; ~48,000 are bloat, Ned-specific, or niche. Poseidon surpasses PAI not by copying lines, but by integrating every skill with project memory, error intelligence, and the complexity scorer.*
+
+### The Three Architectural Advantages (Every Skill Gets These Free)
+
+```
+1. PROJECT SCOPING — Skill outputs feed project knowledge base
+   Research results → memory/projects/{id}/knowledge/research/
+   Security findings → memory/projects/{id}/RULES.md
+   Thinking outputs → memory/projects/{id}/DECISIONS.md
+   Content extracts → memory/projects/{id}/knowledge/
+
+2. ERROR INTELLIGENCE — Skill failures are fingerprinted and learned from
+   API timeout in Research → error-log.jsonl → prevention rule after 3x
+   Failed scan in Security → pattern stored → retry strategy injected
+   Agent spawn failure → classified → pre-prompt warns next time
+
+3. COMPLEXITY-AWARE INVOCATION — Algorithm auto-invokes thinking modes
+   "How should we structure this?" → complexity scorer detects → FirstPrinciples auto-invoked
+   "What are the risks?" → RedTeam auto-suggested in OBSERVE capability selection
+   "Research this thoroughly" → Research skill auto-selects Extensive mode from prompt signals
+```
+
+### Skill-to-Skill Integration Map
+
+```
+                    ┌──────────────┐
+                    │   Thinking   │ ←── Complexity scorer auto-invokes
+                    │ (7 modes)    │     relevant mode during Algorithm
+                    └──────┬───────┘
+                           │ feeds analysis into
+          ┌────────────────┼────────────────┐
+          ▼                ▼                ▼
+   ┌──────────┐    ┌──────────┐    ┌──────────────┐
+   │ Research  │    │ Security │    │    Agents     │
+   │ (4 tiers) │    │ (5 subs) │    │ (composable) │
+   └─────┬─────┘    └────┬─────┘    └──────┬───────┘
+         │               │                 │
+         ▼               ▼                 ▼
+   ┌──────────────────────────────────────────────┐
+   │          Content Analysis                      │
+   │  (ingests research output, security reports,  │
+   │   agent results → structured knowledge)       │
+   └──────────────────┬───────────────────────────┘
+                      │
+                      ▼
+   ┌──────────────────────────────────────────────┐
+   │          Utilities                             │
+   │  (documents, CLI, browser, evals, prompting — │
+   │   tools that other skills use as building     │
+   │   blocks)                                     │
+   └──────────────────────────────────────────────┘
+```
+
+---
+
+### Skill 1: Research (Upgraded)
+
+**PAI:** 3,701 lines, 20 files, 14 workflows. 4 depth modes, multi-agent parallel, Fabric patterns.
+
+**Where Poseidon surpasses PAI:**
+
+| Improvement | PAI Lacks | Poseidon Adds |
+|------------|-----------|---------------|
+| **Auto-tier classification** | User must say "quick"/"extensive" | Complexity scorer infers tier from prompt. "What's the market for X?" → Standard. "Map the entire landscape of X" → Deep. |
+| **Citation verification** | Protocol exists but manual | Automated: every URL checked for 200 status before delivery. Broken link = flagged. |
+| **Project knowledge integration** | Research output goes to MEMORY/WORK/ | Research output feeds `memory/projects/{id}/knowledge/research/`. Survives across sessions. Next time you research the same project, previous findings are loaded as context. |
+| **Provider-agnostic agents** | Hardcoded: Perplexity, Claude, Gemini | Configurable in settings.json: `research.providers: ["websearch", "perplexity", "gemini"]`. Works with zero API keys (WebSearch only) or scales up. |
+| **Quality scoring** | None | 4-axis rubric (completeness, synthesis, citation, clarity) auto-scored on Tier 2+. Below threshold → auto-re-research. |
+
+**Architecture:**
+
+```
+skills/research/
+├── SKILL.md                          (~100 lines — routing + overview)
+├── workflows/
+│   ├── quick.md                      # Tier 1: 1 agent, 1-3 searches
+│   ├── standard.md                   # Tier 2: 3 agents parallel
+│   ├── extensive.md                  # Tier 3: N agents × M queries
+│   ├── deep-investigation.md         # Tier 4: iterative entity research
+│   ├── extract-alpha.md              # Deep insight extraction
+│   └── retrieve.md                   # CAPTCHA/blocking workarounds
+├── handlers/
+│   ├── tier-classifier.ts            # Auto-select tier from prompt
+│   ├── citation-verifier.ts          # Check all URLs before delivery
+│   └── quality-scorer.ts             # 4-axis rubric
+└── references/
+    ├── url-verification-protocol.md  # Hallucination prevention rules
+    └── fabric-patterns.md            # Optional Fabric integration guide
+```
+
+**Estimated: ~2,500 lines, 12 files. PAI's 3,701 lines but denser value.**
+
+---
+
+### Skill 2: Security (Upgraded)
+
+**PAI:** 25,100 lines, 54 files. 5 sub-skills: Recon, WebAssessment, PromptInjection, SECUpdates, AnnualReports.
+
+**Where Poseidon surpasses PAI:**
+
+| Improvement | PAI Lacks | Poseidon Adds |
+|------------|-----------|---------------|
+| **Project-scoped security context** | Same scan approach for everything | Project RULES.md can specify: "this project uses Django + PostgreSQL" → security scan focuses on Django/PostgreSQL-specific CVEs |
+| **Provider-agnostic analysis** | Gemini3-specific analysis workflows | Analysis prompts work with any model. No Gemini dependency. |
+| **Findings → error intelligence** | Security findings are one-shot reports | Critical findings become steering rules: "When deploying this project, check for X" |
+| **Scheduled scanning** | Manual trigger only | Integrates with Phase 5 channels: `/security-scan` via Telegram. Cron-compatible for automated daily scans. |
+
+**Architecture:**
+
+```
+skills/security/
+├── SKILL.md                          (~80 lines — routing)
+├── recon/
+│   ├── SKILL.md                      # Sub-skill router
+│   └── workflows/
+│       ├── domain-recon.md
+│       ├── ip-recon.md
+│       ├── netblock-recon.md
+│       └── passive-recon.md
+├── web-assessment/
+│   ├── SKILL.md
+│   └── workflows/
+│       ├── owasp-scan.md
+│       ├── pentest-methodology.md
+│       └── threat-model.md
+├── prompt-injection/
+│   ├── SKILL.md
+│   └── workflows/
+│       ├── attack-taxonomy.md
+│       └── testing-methodology.md
+├── monitoring/
+│   ├── SKILL.md
+│   └── workflows/
+│       ├── security-news.md          # Aggregated from tldrsec, etc.
+│       └── cve-watch.md              # Watch for CVEs in project deps
+└── references/
+    ├── owasp-top10.md
+    └── tools-guide.md
+```
+
+**Estimated: ~8,000 lines, 20 files. PAI's 25,100 lines cut by 68% with same capability (removed Ned-specific Gemini workflows, redundant reference docs, voice boilerplate).**
+
+---
+
+### Skill 3: Thinking (Upgraded)
+
+**PAI:** 9,229 lines, 53 files. 7 sub-skills. PAI's most portable skill — almost no bloat.
+
+**Where Poseidon surpasses PAI:**
+
+| Improvement | PAI Lacks | Poseidon Adds |
+|------------|-----------|---------------|
+| **Auto-mode selection** | User must explicitly choose thinking mode | Complexity scorer + Algorithm OBSERVE auto-selects: "how should we..." → FirstPrinciples. "what are the risks?" → RedTeam. "brainstorm ways to..." → BeCreative. |
+| **Effectiveness tracking** | No data on which mode works best | Each thinking invocation logged to `memory/learning/signals/thinking-runs.jsonl` with mode, task type, and eventual user satisfaction. Over time, learn which modes produce best results for which task types. |
+| **Project decision integration** | Output is ephemeral | Key outputs auto-appended to `memory/projects/{id}/DECISIONS.md` with rationale. Future sessions have access to past thinking. |
+| **Chained thinking** | Modes are standalone | Support chains: FirstPrinciples → RedTeam (decompose then attack). Council → Science (debate then test). Complexity scorer determines chain depth. |
+
+**Architecture:**
+
+```
+skills/thinking/
+├── SKILL.md                          (~60 lines — routing)
+├── first-principles/
+│   ├── SKILL.md
+│   └── workflows/
+│       ├── deconstruct.md
+│       ├── challenge.md
+│       └── reconstruct.md
+├── red-team/
+│   ├── SKILL.md
+│   └── workflows/
+│       ├── parallel-analysis.md      # Multi-perspective attack
+│       └── stress-test.md
+├── council/
+│   ├── SKILL.md
+│   └── workflows/
+│       └── debate.md                 # N perspectives, synthesis
+├── creative/
+│   ├── SKILL.md
+│   └── workflows/
+│       ├── brainstorm.md
+│       └── tree-of-thoughts.md
+├── science/
+│   ├── SKILL.md
+│   └── workflows/
+│       ├── hypothesis.md
+│       ├── experiment.md
+│       └── full-cycle.md
+├── world-model/
+│   ├── SKILL.md
+│   └── workflows/
+│       ├── threat-model.md
+│       └── futures-analysis.md
+└── iterative-depth/
+    ├── SKILL.md
+    └── workflows/
+        └── deep-exploration.md
+```
+
+**Estimated: ~5,000 lines, 25 files. Leaner than PAI's 9,229 but with auto-selection and chaining.**
+
+---
+
+### Skill 4: Agents (Upgraded)
+
+**PAI:** 4,010 lines, 19 files. Trait composition, voice prosody, named agents.
+
+**Where Poseidon surpasses PAI:**
+
+| Improvement | PAI Lacks | Poseidon Adds |
+|------------|-----------|---------------|
+| **User-defined agents (not hardcoded)** | Dalio, Maestro, Ritchie are Ned's | Users define agents via installer or `/agent create`. Stored in `agents/{name}.yaml`. |
+| **Project-scoped agents** | All agents are global | `agents/{name}.yaml` can specify `project_scope: ["project-x"]`. Agent only available when that project is active. |
+| **Agent effectiveness tracking** | No data on which agents produce better output | Log agent invocations + session outcomes. Over time: "Agent X produces 20% higher satisfaction on security tasks than Agent Y." |
+| **Provider-agnostic voice** | ElevenLabs-specific prosody | Voice config supports: ElevenLabs, Cartesia, system TTS, or none. Graceful degradation. |
+
+**Architecture:**
+
+```
+skills/agents/
+├── SKILL.md                          (~80 lines — routing)
+├── workflows/
+│   ├── compose.md                    # Build agent from traits
+│   ├── create.md                     # Interactive agent creation
+│   └── list.md                       # Show available agents
+├── data/
+│   ├── traits.yaml                   # Base personality/expertise/approach traits
+│   └── voices.yaml                   # Voice provider configs (multi-provider)
+└── references/
+    └── trait-guide.md                # How to design effective agent personas
+```
+
+**User's agents stored at:** `~/.poseidon/agents/{name}.yaml` (not in the skill directory — separates user data from system).
+
+**Estimated: ~1,500 lines, 8 files. PAI's 4,010 cut by 63% — removed Ned's named agents, simplified voice to provider-agnostic config.**
+
+---
+
+### Skill 5: Content Analysis (Upgraded — Leapfrog)
+
+**PAI:** 303 lines, 3 files. Weakest skill — just ExtractWisdom.
+
+**Where Poseidon surpasses PAI:**
+
+| Improvement | PAI Lacks | Poseidon Adds |
+|------------|-----------|---------------|
+| **Multi-format support** | One extraction mode | 5 modes: wisdom, summary, action-items, quotes, structured-data. Each optimized for different content types (video, podcast, article, paper). |
+| **Depth tiers** | One depth | Quick (key points) → Standard (full analysis) → Deep (cross-reference with project knowledge) |
+| **Project knowledge integration** | Output is ephemeral | Extractions feed `memory/projects/{id}/knowledge/`. "I already extracted wisdom from this video in session 5" — no re-processing. |
+| **Parser integration** | Separate from Utilities/Parser | Built-in: URL → detect type → extract (YouTube transcript, article text, PDF content) → analyze. One skill does it all. |
+
+**Architecture:**
+
+```
+skills/content-analysis/
+├── SKILL.md                          (~80 lines — routing)
+├── workflows/
+│   ├── extract-wisdom.md             # Key insights, mental models, quotes
+│   ├── summarize.md                  # Concise summary at specified depth
+│   ├── action-items.md               # Actionable takeaways only
+│   ├── structured-extract.md         # Entities, facts, claims → structured JSON
+│   └── deep-analysis.md              # Cross-reference with project knowledge
+├── handlers/
+│   ├── content-detector.ts           # URL → content type (youtube, article, pdf, audio)
+│   └── transcript-extractor.ts       # YouTube → transcript, podcast → transcribe
+└── references/
+    └── extraction-formats.md         # Output templates per mode
+```
+
+**Estimated: ~1,200 lines, 10 files. PAI's 303 lines → 4x larger but 10x more capable.**
+
+---
+
+### Skill 6: Utilities (Restructured)
+
+**PAI:** 47,863 lines, 408 files. Monolithic — 13 sub-skills in one folder.
+
+**Poseidon approach: Split into independent skills.** The "utilities" name is a junk drawer. Each capability should be its own installable skill.
+
+| PAI Sub-Skill | Poseidon Action | Why |
+|--------------|----------------|-----|
+| **Documents** | → `skills/documents/` (standalone) | PDF/DOCX/XLSX processing is a universal need |
+| **Browser** | → `skills/browser/` (standalone) | Playwright automation is reusable everywhere |
+| **CreateCLI** | → `skills/cli-builder/` (standalone) | CLI generation is a developer staple |
+| **CreateSkill** | → `skills/skill-builder/` (standalone, **enhanced**) | Meta-skill: Poseidon builds its own skills. Enforces agentskills.io spec. |
+| **Evals** | → `skills/evals/` (standalone) | Agent testing belongs in every AI system |
+| **Parser** | → merged into `skills/content-analysis/` | Content extraction is the same domain |
+| **Prompting** | → `skills/prompting/` (standalone) | Prompt engineering is universal |
+| **Fabric** | → optional pack, not default install | 242 patterns are useful but large. Install via `bun tools/skill-add.ts fabric` |
+| **Delegation** | → removed (use Claude Code TeamCreate natively) | Don't wrap what the platform provides |
+| **PAIUpgrade** | → `skills/self-upgrade/` (Poseidon-specific) | Self-upgrade for Poseidon, not PAI |
+| **Cloudflare** | → optional pack | Niche — not everyone uses Cloudflare |
+| **AudioEditor** | → optional pack | Niche |
+| **Aphorisms** | → removed | Ned-specific |
+
+**New Poseidon standard skills from Utilities split:**
+
+```
+skills/documents/SKILL.md       — PDF, DOCX, XLSX, PPTX processing (~1,500 lines)
+skills/browser/SKILL.md         — Playwright automation, screenshots, web testing (~1,200 lines)
+skills/cli-builder/SKILL.md     — TypeScript CLI generation from spec (~1,500 lines)
+skills/skill-builder/SKILL.md   — Create/validate/upgrade Poseidon skills (~1,000 lines)
+skills/evals/SKILL.md           — Agent evaluation, benchmarks, capability testing (~1,000 lines)
+skills/prompting/SKILL.md       — Meta-prompting, template generation (~800 lines)
+skills/self-upgrade/SKILL.md    — Poseidon self-upgrade and health checks (~500 lines)
+```
+
+**Estimated: ~7,500 lines across 7 new skills. PAI's 47,863 → 84% reduction with same core capability.**
+
+---
+
+### Summary — Poseidon Skill Pack v2.0
+
+**Standard install (20 skills):**
+
+| # | Skill | Source | Est. Lines | Est. Files |
+|---|-------|--------|-----------|-----------|
+| 1-10 | v1.0 skills (commit, code-review, debug, deploy, research*, document, refactor, test, security-audit*, project-init) | Existing | ~800 | 10 |
+| 11 | **research** (upgraded, replaces v1) | PAI Research + improvements | ~2,500 | 12 |
+| 12 | **security** (upgraded, replaces v1 security-audit) | PAI Security + improvements | ~8,000 | 20 |
+| 13 | **thinking** (new) | PAI Thinking + auto-selection + chaining | ~5,000 | 25 |
+| 14 | **agents** (new) | PAI Agents + user-defined + project-scoped | ~1,500 | 8 |
+| 15 | **content-analysis** (new) | PAI ContentAnalysis + leapfrog | ~1,200 | 10 |
+| 16 | **documents** (new, from Utilities) | PAI Utilities/Documents | ~1,500 | 8 |
+| 17 | **browser** (new, from Utilities) | PAI Utilities/Browser | ~1,200 | 8 |
+| 18 | **cli-builder** (new, from Utilities) | PAI Utilities/CreateCLI | ~1,500 | 8 |
+| 19 | **skill-builder** (new, from Utilities) | PAI Utilities/CreateSkill + spec enforcement | ~1,000 | 6 |
+| 20 | **evals** (new, from Utilities) | PAI Utilities/Evals | ~1,000 | 6 |
+| | **TOTAL** | | **~25,700** | **~121** |
+
+**Optional packs (installable via `bun tools/skill-add.ts`):**
+- `fabric` — 242 Fabric patterns (~15,000 lines)
+- `prompting` — Meta-prompting and template generation (~800 lines)
+- `self-upgrade` — Poseidon self-upgrade (~500 lines)
+- `cloudflare` — Cloudflare Workers/Pages deployment (~2,000 lines)
+- `audio` — Audio editing and transcription (~1,000 lines)
+
+**Comparison:**
+
+| Metric | PAI | Poseidon v2.0 | Improvement |
+|--------|-----|---------------|-------------|
+| Total lines (standard) | 90,206 | ~25,700 | **71% smaller** |
+| Total files | 557 | ~121 | **78% fewer** |
+| Universal (non-Ned) content | ~42,000 | ~25,700 | **39% leaner** (cut remaining bloat) |
+| Skills with project integration | 0/6 | 6/6 | **All skills project-aware** |
+| Skills with error intelligence | 0/6 | 6/6 | **All skills feed learning** |
+| Skills with auto-invocation | 0/6 | 3/6 | Thinking, Research, Security |
+| Distributable (no Ned-specific) | 0/6 | 6/6 | **100% portable** |
+
+### Build Order (Dependency-Driven)
+
+```
+Week 6: Thinking (foundation — other skills invoke thinking modes)
+  ↓
+Week 7: Research (upgraded) + Content Analysis
+  ↓ (research feeds content, content feeds knowledge)
+Week 8: Security (upgraded) + Agents
+  ↓ (security uses agents for parallel scanning)
+Week 9: Documents + Browser + CLI Builder + Skill Builder + Evals
+  ↓ (utility skills, mostly independent)
+Week 10: Integration testing + optional packs
+```
+
+### Build Tasks — Phase 7
+
+#### Week 6: Thinking
+- [ ] Thinking SKILL.md with 7 sub-skill routing
+- [ ] FirstPrinciples (deconstruct/challenge/reconstruct workflows)
+- [ ] RedTeam (parallel-analysis/stress-test workflows)
+- [ ] Council (multi-perspective debate workflow)
+- [ ] Creative (brainstorm/tree-of-thoughts workflows)
+- [ ] Science (hypothesis/experiment/full-cycle workflows)
+- [ ] WorldModel (threat-model/futures-analysis workflows)
+- [ ] IterativeDepth (deep-exploration workflow)
+- [ ] Auto-mode selection integration with complexity scorer
+- [ ] Chained thinking support (FirstPrinciples → RedTeam)
+- [ ] Thinking effectiveness logging to signals/thinking-runs.jsonl
+- [ ] Test: "how should we structure X" auto-invokes FirstPrinciples
+- [ ] Test: "what are the risks of X" auto-invokes RedTeam
+
+#### Week 7: Research + Content Analysis
+- [ ] Research SKILL.md with 4-tier routing
+- [ ] Auto-tier classifier (handlers/tier-classifier.ts)
+- [ ] Citation verifier (handlers/citation-verifier.ts)
+- [ ] Quality scorer (handlers/quality-scorer.ts)
+- [ ] Quick/Standard/Extensive/DeepInvestigation workflows
+- [ ] Provider-agnostic agent config
+- [ ] Project knowledge integration (research → memory/projects/{id}/knowledge/)
+- [ ] Content Analysis SKILL.md with 5 extraction modes
+- [ ] Content type detector (handlers/content-detector.ts)
+- [ ] Extract-wisdom/summarize/action-items/structured/deep workflows
+- [ ] Test: URL → auto-detect type → extract → structured output
+- [ ] Test: Research output appears in project knowledge base
+
+#### Week 8: Security + Agents
+- [ ] Security SKILL.md with 4 sub-skill routing
+- [ ] Recon sub-skill (domain/IP/netblock/passive)
+- [ ] WebAssessment sub-skill (OWASP/pentest/threat-model)
+- [ ] PromptInjection sub-skill (taxonomy/testing)
+- [ ] Monitoring sub-skill (security news/CVE watch)
+- [ ] Project-scoped security context
+- [ ] Agents SKILL.md with compose/create/list
+- [ ] Provider-agnostic voice config
+- [ ] User-defined agent storage at ~/.poseidon/agents/
+- [ ] Agent effectiveness logging
+- [ ] Test: Security scan uses project tech stack context
+- [ ] Test: Custom agent created and invoked successfully
+
+#### Week 9: Utility Skills
+- [ ] Documents skill (PDF/DOCX/XLSX processing)
+- [ ] Browser skill (Playwright automation)
+- [ ] CLI Builder skill (TypeScript CLI generation)
+- [ ] Skill Builder skill (create/validate with agentskills.io spec)
+- [ ] Evals skill (agent testing/benchmarks)
+- [ ] Test: PDF extracted and summarized
+- [ ] Test: New skill scaffolded and validates
+
+#### Week 10: Integration + Optional Packs
+- [ ] Cross-skill integration testing
+- [ ] Fabric optional pack with installer
+- [ ] Prompting optional pack
+- [ ] Self-upgrade pack
+- [ ] skill-add.ts tool for installing optional packs
+- [ ] Update installer with new skill selection
+- [ ] v2.0 release tag
+
+---
+
+## Build Phases (10 Weeks)
 
 ### Week 1: Core Loop
 - [ ] Directory structure + settings.json schema
