@@ -218,9 +218,10 @@ async function handle(req: Request, srv: any): Promise<Response> {
 
 const server = Bun.serve({
   port: PORT,
+  hostname: "0.0.0.0",
   fetch(req, srv) {
     try { return handle(req, srv); }
     catch (e: any) { return json({ error: e.message || "Internal error" }, 500); }
   },
 });
-console.log(`Poseidon Dashboard: http://localhost:${server.port} | PAI: ${PAI_DIR}`);
+console.log(`Poseidon Dashboard: http://0.0.0.0:${server.port} | PAI: ${PAI_DIR}`);
