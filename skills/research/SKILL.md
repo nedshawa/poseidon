@@ -1,86 +1,89 @@
 ---
 name: research
 description: >-
-  Conducts multi-depth research from memory recall to deep investigation.
-  USE WHEN the user asks to research, investigate, look into, or find out about a topic.
+  Conducts multi-depth research from quick lookups to deep investigations with
+  parallel agents, citation verification, and quality scoring. Auto-selects
+  research depth from prompt complexity. USE WHEN research, investigate, look
+  into, find out, deep dive, what do we know about, compare, analyze landscape,
+  map the market, extensive research, quick research.
 ---
 
-## Instructions
+## Overview
 
-Research topics at the appropriate depth tier. Start shallow, go deeper only if needed.
+Multi-tier research system with automatic depth selection, parallel agent execution,
+mandatory citation verification, and quality scoring. Provider-agnostic: works with
+WebSearch alone, scales with Perplexity/Gemini APIs when available.
 
-### Tier Selection
+## Research Tiers
 
-| Tier | Name    | When to Use                        | Time   |
-|------|---------|------------------------------------|--------|
-| 0    | Memory  | Answer is likely in project files  | <30s   |
-| 1    | Quick   | Simple factual question            | <2min  |
-| 2    | Standard| Needs comparison or analysis       | <10min |
-| 3    | Deep    | Complex, multi-source investigation| <30min |
+| Tier | Name               | Agents | Queries | Time     | Trigger Score |
+|------|--------------------|--------|---------|----------|---------------|
+| 1    | Quick              | 1      | 1-3     | <30s     | 0-30          |
+| 2    | Standard (default) | 3      | 3-10    | 1-3 min  | 31-55         |
+| 3    | Extensive          | 4-10   | 10-50   | 5-20 min | 56-75         |
+| 4    | Deep Investigation | N      | 50+     | 20-60min | 76+           |
 
-### Tier 0: Memory Recall
+## Tier Auto-Selection
 
-Check local sources first:
-- Project documentation and README files
-- Memory files and previous session notes
-- Existing codebase for implementation details
-- Config files for settings and versions
+The tier classifier scores prompt complexity (0-100) across five signals:
+entity count, temporal scope, comparison breadth, abstraction level, and explicit depth cues.
 
-If the answer is found locally with confidence, return it. No external search needed.
+**Keyword overrides** (bypass scoring):
+- "quick research", "quick lookup" --> Tier 1
+- "extensive research", "comprehensive" --> Tier 3
+- "deep investigation", "map the landscape" --> Tier 4
 
-### Tier 1: Quick Lookup
+Run `handlers/tier-classifier.ts` to classify programmatically.
 
-For straightforward factual questions:
-- Use web search for current information
-- Check official documentation
-- One source is sufficient if authoritative
-- No citation formatting needed, just name the source
+## Workflow Routing
 
-### Tier 2: Standard Research
+| Request Pattern                        | Workflow                        |
+|----------------------------------------|---------------------------------|
+| Simple fact, definition, date          | workflows/quick.md              |
+| "Research X", comparison, multi-part   | workflows/standard.md           |
+| "Extensive", "deep dive", "comprehensive" | workflows/extensive.md       |
+| "Investigate", "map landscape"         | workflows/deep-investigation.md |
+| "Extract insights", "key takeaways"   | workflows/extract-alpha.md      |
+| URL blocked, CAPTCHA, content needed   | workflows/retrieve.md           |
 
-For questions requiring comparison or analysis:
-- Consult 3-5 sources minimum
-- Cross-reference claims across sources
-- Note disagreements between sources
-- Provide structured comparison if evaluating options
+## Mandatory: URL Verification
 
-### Tier 3: Deep Investigation
+Every URL included in research output MUST be verified before delivery.
+See `references/url-verification-protocol.md` for the full protocol.
+Never generate URLs from memory. Only use URLs found in search results.
 
-For complex topics requiring thorough understanding:
-- 5+ sources from diverse perspectives
-- Primary sources preferred over summaries
-- Evaluate source credibility and recency
-- Identify gaps in available information
-- Produce a structured report
+## Quality Rubric
 
-### Source Quality Rules
+Four axes, each scored 0-10. Tier 2+ requires 6/10 minimum on the first three:
 
-- Official docs > blog posts > forum answers > AI-generated content
-- Prefer sources from the last 2 years for technical topics
-- Discard sources that contradict official documentation
-- Flag when information may be outdated
+| Axis                  | What It Measures                              |
+|-----------------------|-----------------------------------------------|
+| Explicit Completeness | All aspects of the question addressed          |
+| Synthesis Quality     | Cross-source integration, not just listing     |
+| Citation Integrity    | Sources real, relevant, and properly attributed |
+| Clarity               | Well-structured, scannable, actionable         |
 
-### Output Format
+If any axis falls below threshold, the quality scorer triggers a re-research cycle
+targeting the weak axis. Run `handlers/quality-scorer.ts` for programmatic scoring.
 
-```
-## Research: [topic]
+## Project Integration
 
-**Tier:** [0-3] | **Sources:** [count]
-
-### Findings
-[structured answer]
-
-### Sources
-1. [source name/url] - [what it contributed]
-2. ...
-
-### Confidence: [HIGH/MEDIUM/LOW] - [why]
-```
+Research output persists to `memory/projects/{id}/knowledge/research/` when a project
+context is active. File naming: `{date}_{slug}.md`.
 
 ## Scope
 
-NOT for:
-- Making decisions (present findings, let the user decide)
-- Original analysis or opinions
-- Accessing paywalled or private content
+This skill handles research and information gathering. It does NOT handle:
+- Code writing or implementation (use coding skills)
+- Security scanning or vulnerability assessment
+- People search or personal investigations (use investigation skill)
+- Decision-making (present findings; the user decides)
 - Legal, medical, or financial advice
+
+## Handlers
+
+| Handler                       | Purpose                                 |
+|-------------------------------|-----------------------------------------|
+| handlers/tier-classifier.ts   | Auto-select tier from prompt signals    |
+| handlers/citation-verifier.ts | Verify all URLs are live before delivery |
+| handlers/quality-scorer.ts    | 4-axis rubric scoring with thresholds   |

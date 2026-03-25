@@ -7,7 +7,7 @@
 
 ## Purpose
 
-Prevents planning for only one version of the future. Most strategic failures come from assuming the baseline scenario is inevitable. This workflow forces consideration of optimistic and pessimistic alternatives to find actions that work regardless.
+Forces consideration of multiple futures to find actions that work regardless of which scenario materializes.
 
 ## Inputs
 - **decision**: The strategic question or decision being analyzed
@@ -29,15 +29,12 @@ Categories to consider:
 For each driver, note: direction of trend, certainty level, and speed of change.
 
 ### Step 2: Generate Three Scenarios
-Build three coherent narratives of how the future could unfold:
+Build three coherent narratives:
+- **Optimistic** (15-25%): Key bets pay off. Not perfection, but favorable breaks.
+- **Baseline** (40-60%): Current trends continue unchanged.
+- **Pessimistic** (15-25%): Key drivers break unfavorably.
 
-**Optimistic**: Most drivers break favorably. Not "everything goes perfectly" but "key bets pay off." Probability: typically 15-25%.
-
-**Baseline**: Current trends continue. The default path if nothing surprising happens. Probability: typically 40-60%.
-
-**Pessimistic**: Key drivers break unfavorably. Not "total disaster" but "things we hoped wouldn't happen, did." Probability: typically 15-25%.
-
-For each scenario, describe the state of the world at each time horizon.
+For each, describe the state at each time horizon.
 
 ### Step 3: Map Implications
 For each scenario at each time horizon:

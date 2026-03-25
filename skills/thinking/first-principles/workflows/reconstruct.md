@@ -1,63 +1,46 @@
 # Reconstruct Workflow
 
-**Purpose**: Build an optimal solution from scratch using only the fundamental truths and hard constraints identified through Deconstruct and Challenge.
+**Purpose**: Build an optimal solution from scratch using only hard constraints identified through Deconstruct and Challenge.
 
-**When to Use:**
-- After completing Deconstruct and Challenge
-- When existing solutions are clearly suboptimal
-- When you need to escape a local maximum
-- To generate innovative alternatives to conventional approaches
+**When to Use**: After Deconstruct and Challenge, suboptimal existing solutions, escaping local maxima, generating innovative alternatives.
 
 ## Core Principle
 
-> "If we knew nothing about how this is currently done, and only knew the fundamental truths, what would we build?"
+> "If we knew nothing about how this is currently done, and only knew the truths, what would we build?"
 
-Optimize **function** (what you accomplish) rather than **form** (how it has traditionally been done).
+Optimize **function** (what you accomplish) not **form** (how it has traditionally been done).
 
 ## Process
 
-### Step 1: State Only the Hard Constraints
+### Step 1: State Only Hard Constraints
 
-From the Challenge analysis, list ONLY hard constraints: laws of physics, mathematical requirements, verified empirical facts, true immutable requirements.
-
-Exclude all soft constraints, assumptions, and conventions.
+From Challenge, list ONLY: laws of physics, mathematical requirements, verified facts, true immutable requirements. Exclude all soft constraints, assumptions, and conventions.
 
 ### Step 2: Define the Function
 
-What is the actual outcome needed?
-
-- Not "we need a database" but "we need to persist and retrieve data reliably"
-- Not "we need microservices" but "we need to deploy components independently"
-- Not "we need a mobile app" but "users need to accomplish X from anywhere"
+State the actual outcome needed -- not the method:
+- Not "we need a database" but "persist and retrieve data reliably"
+- Not "we need microservices" but "deploy components independently"
+- Not "we need a mobile app" but "users accomplish X from anywhere"
 
 ### Step 3: Blank Slate Design
 
-Pretend you have never seen the current solution. Generate 3+ approaches:
-- If starting a new company to solve just this problem, what would you build?
-- What would someone from a completely different field build?
-- What is the simplest thing that satisfies only the hard constraints?
+Generate 3+ approaches as if you have never seen the current solution:
+- What would a new company build to solve just this?
+- What would someone from a different field build?
+- What is the simplest thing satisfying only hard constraints?
 
 ### Step 4: Cross-Domain Synthesis
 
-Look for solutions in unrelated fields:
-- What industry solved an analogous problem?
-- What technology from another domain could apply?
+What industry solved an analogous problem? What technology from another domain applies?
 
 ### Step 5: Evaluate Against Function
 
-| Solution | Satisfies Hard Constraints? | Achieves Function? | Simpler Than Current? |
-|----------|----------------------------|--------------------|-----------------------|
+| Solution | Satisfies Constraints? | Achieves Function? | Simpler Than Current? |
+|----------|------------------------|--------------------|-----------------------|
 | [A] | Yes/No | Yes/No | Yes/No |
-| [B] | Yes/No | Yes/No | Yes/No |
 
 Best solution: satisfies constraints, achieves function, maximizes simplicity.
-
-### Step 6: Compare to Current Approach
-
-| Aspect | Current | Reconstructed | Delta |
-|--------|---------|---------------|-------|
-| Complexity | [X] | [Y] | [Simpler/Same/More] |
-| Cost | [X] | [Y] | [Lower/Same/Higher] |
 
 ## Output Template
 
@@ -70,9 +53,9 @@ Best solution: satisfies constraints, achieves function, maximizes simplicity.
 ### Function to Optimize
 [What we are actually trying to accomplish]
 
-### Blank Slate Solutions
-**Option A**: [Approach, how it satisfies constraints, pros/cons]
-**Option B**: [Approach, how it satisfies constraints, pros/cons]
+### Solutions
+**Option A**: [Approach, constraints satisfied, pros/cons]
+**Option B**: [Approach, constraints satisfied, pros/cons]
 
 ### Cross-Domain Insights
 - From [Field]: [Applicable concept]
@@ -81,7 +64,7 @@ Best solution: satisfies constraints, achieves function, maximizes simplicity.
 **[Option X]** because [reasoning]
 
 ### What Changes
-- Eliminated: [Complexity that was not fundamental]
+- Eliminated: [Non-fundamental complexity]
 - Simplified: [Over-engineering from soft constraints]
 - Added: [New approaches from first principles]
 ```
@@ -89,5 +72,5 @@ Best solution: satisfies constraints, achieves function, maximizes simplicity.
 ## Common Patterns
 
 - **"Do we even need this?"** -- Reconstructed solutions often eliminate entire components
-- **"Different tech, same function"** -- The function stays but the form changes completely
-- **"Combine steps"** -- Removing soft constraints allows merging what were separate steps
+- **"Different tech, same function"** -- Function stays, form changes completely
+- **"Combine steps"** -- Removing soft constraints allows merging separate steps
