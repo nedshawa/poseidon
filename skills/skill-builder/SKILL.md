@@ -4,7 +4,8 @@ description: >
   Creates, validates, and upgrades Poseidon skills following the agentskills.io
   specification. Enforces quality gates and best practices for skill authoring.
   USE WHEN create skill, new skill, scaffold skill, validate skill, update skill,
-  fix skill, skill template, skill quality, skill check.
+  fix skill, skill template, skill quality, skill check, canonicalize skill,
+  fix skill structure.
 ---
 
 # Skill Builder
@@ -52,3 +53,30 @@ This skill handles skill authoring and maintenance within Poseidon.
 - [Create Skill](workflows/create-skill.md) - Scaffold a new skill from scratch
 - [Validate Skill](workflows/validate-skill.md) - Run quality gate checks
 - [Upgrade Skill](workflows/upgrade-skill.md) - Improve an existing skill
+- [Canonicalize Skill](workflows/canonicalize-skill.md) - Restructure to match spec
+
+## Examples
+
+**Example 1: Create a new skill**
+```
+User: "Create a new skill for managing Docker containers"
+→ Routes to create-skill workflow
+→ Scaffolds skill directory with SKILL.md, workflows/, scope boundary
+→ User gets a ready-to-fill skill template
+```
+
+**Example 2: Canonicalize an existing skill**
+```
+User: "Canonicalize the research skill"
+→ Routes to canonicalize-skill workflow
+→ Runs 9 quality checks, reports pass/fail
+→ Applies fixes for any failing checks
+```
+
+**Example 3: Validate skill quality**
+```
+User: "Validate the agents skill"
+→ Routes to validate-skill workflow
+→ Checks against agentskills.io spec
+→ Reports pass/fail with action items
+```

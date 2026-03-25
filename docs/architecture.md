@@ -166,6 +166,44 @@ Three-tier approach: block catastrophic, confirm destructive, allow everything e
 - **age encryption** for secrets at rest — decrypted to RAM only, never disk
 - **Six persistence points** protected: screen, logs, git, context window, bash history, tool arguments
 
+## Skill System
+
+Skills are the organizational unit for all domain expertise. Each skill is a self-contained package with triggers, workflows, and scope boundaries.
+
+**Full specification:** `docs/skillsystem.md`
+
+Key conventions:
+- **Naming:** lowercase-hyphen (e.g., `skill-builder`, `content-analysis`)
+- **Structure:** SKILL.md + workflows/ + optional handlers/, references/, data/
+- **Quality gate:** 9-point checklist from agentskills.io spec
+- **Dynamic loading:** SKILL.md stays minimal, reference docs loaded on demand
+
+## Self-Upgrade System
+
+The algorithm improves itself through accumulated evidence:
+
+```
+Session reflections (algorithm-reflections.jsonl)
+    |
+    v
+mine-reflections.ts (pattern extraction)
+    |
+    v
+Recommendations for algorithm changes
+    |
+    v
+upgrade-algorithm.ts (version management)
+    |
+    v
+algorithm/v{N+1}.md → LATEST symlink updated
+```
+
+**Tools:**
+- `bun tools/mine-reflections.ts` — Extract patterns from reflections
+- `bun tools/upgrade-algorithm.ts status` — Show algorithm version info
+- `bun tools/upgrade-algorithm.ts create v1.2` — Create new version
+- `bun tools/upgrade-algorithm.ts rollback` — Revert to previous version
+
 ## Contributing
 
 1. Fork the repository

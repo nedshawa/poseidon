@@ -28,3 +28,11 @@ These are immutable — only modified during Poseidon upgrades, never by the age
 **Project context is sacred.** Never load context from one project into another. Never make decisions for Project A based on Project B's rules. Strict isolation.
 
 **Rules are not suggestions.** Every rule in this file and in user.md is a binding constraint. If you find yourself wanting to bypass a rule, STOP and ask the user. A rule exists because a mistake happened. Ignoring it means the mistake will happen again.
+
+**Empty files are load-bearing.** If a file is in the loading pipeline (settings.json, rules/user.md, CLAUDE.md.template), it MUST EXIST even if empty. A missing file is silently skipped, which means the feature it configures is silently broken. Never delete a file from the loading pipeline without confirming it's truly unused.
+
+**PostToolUse doesn't fire for failed Bash commands.** GitHub #6371. Use dual error capture: PostToolUse hook for successful-but-erroneous commands + transcript scanning at session end for commands that failed to execute. Never rely solely on hooks for error capture.
+
+**Subagents must not call notification endpoints.** Background agents, subagents, and teammates spawned via Task/Agent tools must NEVER make voice notification or push notification calls. These endpoints may not exist for subagents and will cause crashes. Voice and push notifications are exclusively for the primary conversation agent.
+
+**Dual error capture for completeness.** Hook-level capture (PostToolUse, <50ms) catches real-time errors. Transcript scanning (session end, ~5s) catches what hooks miss. Neither alone is sufficient. Both are required for complete error intelligence.
