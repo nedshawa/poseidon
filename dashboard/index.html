@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Poseidon Dashboard</title>
+  <link rel="stylesheet" href="/static/uplot.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/uplot.iife.min.js"></script>
+</head>
+<body>
+  <nav id="nav">
+    <div class="logo">&#9889; Poseidon</div>
+    <a href="#overview" class="nav-link active">Overview</a>
+    <a href="#learning" class="nav-link">Learning</a>
+    <a href="#sessions" class="nav-link">Sessions</a>
+    <a href="#settings" class="nav-link">Settings</a>
+  </nav>
+  <main id="app"></main>
+<script>
+// ── Helpers ────────────────────────────────────────────────
+async function api(path, opts) {
+  try {
+    const res = await fetch(`/api/${path}`, opts);
+    if (!res.ok) throw new Error(res.statusText);
+    return await res.json();
+  } catch { return { data: [], count: 0, empty: true }; }
+}
+
+function el(tag, attrs = {}, ...children) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') e.className = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (k === 'html') e.innerHTML = v;
+    else e.setAttribute(k, v);
+  }
+  for (const c of children) {
+    if (typeof c === 'string') e.appendChild(document.createTextNode(c));
+    else if (c) e.appendChild(c);
+  }
+  return e;
+}
+
+function fmtDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(typeof ts === 'number' ? (ts < 1e12 ? ts * 1000 : ts) : ts);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' +
+         d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function fmtShortDate(ts) {
+  const d = new Date(typeof ts === 'number' ? (ts < 1e12 ? ts * 1000 : ts) : ts);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function isToday(ts) {
+  const d = new Date(typeof ts === 'number' ? (ts < 1e12 ? ts * 1000 : ts) : ts);
+  const now = new Date();
+  return d.toDateString() === now.toDateString();
+}
+
+function badgeMode(mode) {
+  const m = (mode || '').toUpperCase();
+  const cls = m === 'ALGORITHM' ? 'badge-algo' : m === 'NATIVE' ? 'badge-native' : 'badge-minimal';
+  return el('span', { class: `badge ${cls}` }, m || '—');
+}
+
+function kpiCard(value, label, trend = '') {
+  const card = el('div', { class: 'card kpi-card' });
+  card.appendChild(el('div', { class: 'kpi-value' }, String(value)));
+  card.appendChild(el('div', { class: 'kpi-label' }, label));
+  if (trend) card.appendChild(el('div', { class: `kpi-trend ${trend.startsWith('+') || trend.startsWith('\u2191') ? 'trend-up' : trend.startsWith('-') || trend.startsWith('\u2193') ? 'trend-down' : ''}` }, trend));
+  return card;
+}
+
+// ── Charts ─────────────────────────────────────────────────
+const charts = [];
+function createChart(container, data, opts = {}) {
+  if (!data.timestamps || !data.timestamps.length) {
+    container.appendChild(el('div', { class: 'empty-state' }, el('div', { class: 'icon' }, '\uD83D\uDCCA'), el('p', {}, 'No data yet')));
+    return null;
+  }
+  const options = {
+    width: container.clientWidth || 500,
+    height: opts.height || 250,
+    scales: { x: { time: true } },
+    series: [{}, { stroke: opts.color || '#58a6ff', width: 2, fill: opts.fill || 'rgba(88,166,255,0.08)' }],
+    axes: [
+      { stroke: '#484f58', grid: { stroke: 'rgba(255,255,255,0.04)' }, ticks: { stroke: 'rgba(255,255,255,0.04)' } },
+      { stroke: '#484f58', grid: { stroke: 'rgba(255,255,255,0.04)' }, ticks: { stroke: 'rgba(255,255,255,0.04)' } }
+    ]
+  };
+  const chart = new uPlot(options, [data.timestamps, data.values], container);
+  charts.push({ chart, container });
+  return chart;
+}
+
+window.addEventListener('resize', () => {
+  for (const { chart, container } of charts) {
+    chart.setSize({ width: container.clientWidth, height: 250 });
+  }
+});
+
+// ── SSE ────────────────────────────────────────────────────
+let sse;
+function connectSSE() {
+  sse = new EventSource('/api/events');
+  sse.onmessage = (e) => {
+    try { const ev = JSON.parse(e.data); if (ev.refresh) render(); } catch {}
+  };
+  sse.onerror = () => { sse.close(); setTimeout(connectSSE, 5000); };
+}
+connectSSE();
+
+// ── Router ─────────────────────────────────────────────────
+const routes = { overview: renderOverview, learning: renderLearning, sessions: renderSessions, settings: renderSettings };
+
+function render() {
+  charts.length = 0;
+  const page = location.hash.slice(1) || 'overview';
+  document.querySelectorAll('.nav-link').forEach(a =>
+    a.classList.toggle('active', a.getAttribute('href') === '#' + page)
+  );
+  const fn = routes[page];
+  if (fn) {
+    const app = document.getElementById('app');
+    app.innerHTML = '';
+    fn(app);
+  }
+}
+
+window.addEventListener('hashchange', render);
+window.addEventListener('DOMContentLoaded', render);
+
+// ── Page: Overview ─────────────────────────────────────────
+async function renderOverview(app) {
+  app.appendChild(el('div', { class: 'section section-title' }, 'Overview'));
+
+  // KPI row — placeholders, then fill
+  const kpiGrid = el('div', { class: 'grid grid-6 section' });
+  app.appendChild(kpiGrid);
+  for (let i = 0; i < 6; i++) kpiGrid.appendChild(kpiCard('...', 'Loading'));
+
+  // Charts row
+  const chartGrid = el('div', { class: 'grid grid-2 section' });
+  const ratingBox = el('div', { class: 'card chart-container' });
+  ratingBox.appendChild(el('h3', {}, 'Rating Trend'));
+  const ratingWrap = el('div', { class: 'chart-wrap' });
+  ratingBox.appendChild(ratingWrap);
+  const errorBox = el('div', { class: 'card chart-container' });
+  errorBox.appendChild(el('h3', {}, 'Error Trend'));
+  const errorWrap = el('div', { class: 'chart-wrap' });
+  errorBox.appendChild(errorWrap);
+  chartGrid.appendChild(ratingBox);
+  chartGrid.appendChild(errorBox);
+  app.appendChild(chartGrid);
+
+  // Activity feed
+  const feedSection = el('div', { class: 'section' });
+  feedSection.appendChild(el('div', { class: 'section-title' }, 'Recent Activity'));
+  const feedList = el('div', {});
+  feedSection.appendChild(feedList);
+  app.appendChild(feedSection);
+
+  // Fetch data
+  const [metrics, sessions, ratings, errors, rules, escalation] = await Promise.all([
+    api('metrics'), api('sessions'), api('ratings'), api('errors'), api('rules'), api('escalation')
+  ]);
+
+  const ratingsArr = ratings.data || ratings || [];
+  const errorsArr = errors.data || errors || [];
+  const sessionsArr = sessions.data || sessions || [];
+  const rulesArr = rules.data || rules || [];
+  const metricsArr = metrics.data || metrics || [];
+  const escArr = escalation.data || escalation || [];
+
+  // Compute KPIs
+  const lastMetric = Array.isArray(metricsArr) && metricsArr.length ? metricsArr[metricsArr.length - 1] : null;
+  const learningScore = lastMetric ? (lastMetric.score ?? lastMetric.learning_score ?? '—') : '—';
+  const totalSessions = Array.isArray(sessionsArr) ? sessionsArr.length : (sessions.count || 0);
+  const avgRating = Array.isArray(ratingsArr) && ratingsArr.length
+    ? (ratingsArr.reduce((s, r) => s + (r.score ?? r.rating ?? 0), 0) / ratingsArr.length).toFixed(1) : '—';
+  const errorsToday = Array.isArray(errorsArr) ? errorsArr.filter(e => isToday(e.timestamp || e.ts || e.date)).length : 0;
+  const activeRules = Array.isArray(rulesArr) ? rulesArr.length : (rules.count || 0);
+
+  let modeSplit = '—';
+  if (Array.isArray(escArr) && escArr.length) {
+    const counts = { ALGORITHM: 0, NATIVE: 0, MINIMAL: 0 };
+    escArr.forEach(e => { const m = (e.mode || '').toUpperCase(); if (counts[m] !== undefined) counts[m]++; });
+    const t = escArr.length;
+    modeSplit = `A:${Math.round(counts.ALGORITHM/t*100)}% N:${Math.round(counts.NATIVE/t*100)}% M:${Math.round(counts.MINIMAL/t*100)}%`;
+  }
+
+  kpiGrid.innerHTML = '';
+  kpiGrid.appendChild(kpiCard(learningScore, 'Learning Score'));
+  kpiGrid.appendChild(kpiCard(totalSessions, 'Total Sessions'));
+  kpiGrid.appendChild(kpiCard(avgRating, 'Avg Rating'));
+  kpiGrid.appendChild(kpiCard(errorsToday, 'Errors Today'));
+  kpiGrid.appendChild(kpiCard(activeRules, 'Active Rules'));
+  kpiGrid.appendChild(kpiCard(modeSplit, 'Mode Split'));
+
+  // Rating chart
+  if (Array.isArray(ratingsArr) && ratingsArr.length) {
+    const sorted = [...ratingsArr].sort((a, b) => new Date(a.timestamp || a.ts || a.date) - new Date(b.timestamp || b.ts || b.date));
+    createChart(ratingWrap, {
+      timestamps: sorted.map(r => Math.floor(new Date(r.timestamp || r.ts || r.date).getTime() / 1000)),
+      values: sorted.map(r => r.score ?? r.rating ?? 0)
+    }, { color: '#3fb950', fill: 'rgba(63,185,80,0.08)' });
+  } else {
+    ratingWrap.appendChild(el('div', { class: 'empty-state' }, 'No ratings yet'));
+  }
+
+  // Error chart — group by day
+  if (Array.isArray(errorsArr) && errorsArr.length) {
+    const byDay = {};
+    errorsArr.forEach(e => {
+      const d = new Date(e.timestamp || e.ts || e.date);
+      const key = Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 1000);
+      byDay[key] = (byDay[key] || 0) + 1;
+    });
+    const keys = Object.keys(byDay).map(Number).sort();
+    createChart(errorWrap, { timestamps: keys, values: keys.map(k => byDay[k]) }, { color: '#f85149', fill: 'rgba(248,81,73,0.08)' });
+  } else {
+    errorWrap.appendChild(el('div', { class: 'empty-state' }, 'No errors yet'));
+  }
+
+  // Activity feed — merge and sort
+  const items = [];
+  ratingsArr.forEach(r => items.push({ ts: r.timestamp || r.ts || r.date, text: `Rating: ${r.score ?? r.rating}/10`, type: 'rating' }));
+  errorsArr.forEach(e => items.push({ ts: e.timestamp || e.ts || e.date, text: `Error: ${e.type || e.error || e.message || 'unknown'}`, type: 'error' }));
+  items.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+
+  if (items.length === 0) {
+    feedList.appendChild(el('div', { class: 'empty-state' }, 'No activity yet'));
+  } else {
+    items.slice(0, 10).forEach(item => {
+      const row = el('div', { class: 'activity-item' });
+      row.appendChild(el('span', { class: 'ts' }, fmtDate(item.ts)));
+      row.appendChild(el('span', {}, item.text));
+      feedList.appendChild(row);
+    });
+  }
+}
+
+// ── Page: Learning ─────────────────────────────────────────
+async function renderLearning(app) {
+  app.appendChild(el('div', { class: 'section section-title' }, 'Learning'));
+
+  const [metrics, rules, candidates] = await Promise.all([
+    api('metrics'), api('rules'), api('candidates')
+  ]);
+
+  const metricsArr = metrics.data || metrics || [];
+  const rulesArr = rules.data || rules || [];
+  const candArr = candidates.data || candidates || [];
+  const last = Array.isArray(metricsArr) && metricsArr.length ? metricsArr[metricsArr.length - 1] : null;
+  const score = last ? (last.score ?? last.learning_score ?? 0) : 0;
+
+  // Score section
+  const scoreCard = el('div', { class: 'card section', style: 'display:flex;align-items:center;gap:32px;flex-wrap:wrap' });
+  const scoreLeft = el('div', {});
+  scoreLeft.appendChild(el('div', { class: `score-big ${score >= 70 ? 'trend-up' : ''}` }, String(score)));
+  scoreLeft.appendChild(el('div', { class: 'kpi-label', style: 'margin-top:8px' }, 'Learning Score'));
+
+  // Trend
+  let trendText = '';
+  if (Array.isArray(metricsArr) && metricsArr.length >= 2) {
+    const now = new Date(), past = new Date(now - 30 * 86400000);
+    const older = metricsArr.find(m => new Date(m.timestamp || m.ts || m.date) >= past);
+    if (older) {
+      const diff = score - (older.score ?? older.learning_score ?? 0);
+      trendText = diff >= 0 ? `\u2191${diff} this month` : `\u2193${Math.abs(diff)} this month`;
+    }
+  }
+  if (trendText) scoreLeft.appendChild(el('div', { class: `kpi-trend ${trendText.startsWith('\u2191') ? 'trend-up' : 'trend-down'}`, style: 'margin-top:6px' }, trendText));
+  scoreCard.appendChild(scoreLeft);
+
+  const progressWrap = el('div', { style: 'flex:1;min-width:200px' });
+  const bar = el('div', { class: 'progress-bar' });
+  bar.appendChild(el('div', { class: 'fill', style: `width:${Math.min(score, 100)}%` }));
+  progressWrap.appendChild(bar);
+  scoreCard.appendChild(progressWrap);
+  app.appendChild(scoreCard);
+
+  // Metric cards
+  const mGrid = el('div', { class: 'grid grid-4 section' });
+  const metricVal = (key, fallback) => last && last[key] != null ? last[key] : fallback;
+  const err = metricVal('err', metricVal('error_rate', '—'));
+  const rer = metricVal('rer', metricVal('rule_effectiveness', '—'));
+  const kc = metricVal('kc', metricVal('knowledge_coverage', '—'));
+  const mtbf = metricVal('mtbf', '—');
+
+  function metricCard(val, label, good) {
+    const display = typeof val === 'number' ? (val > 1 ? val.toFixed(1) : (val * 100).toFixed(0) + '%') : String(val);
+    const card = el('div', { class: 'card kpi-card' });
+    card.appendChild(el('div', { class: `kpi-value ${good ? 'trend-up' : ''}` }, display));
+    card.appendChild(el('div', { class: 'kpi-label' }, label));
+    return card;
+  }
+
+  mGrid.appendChild(metricCard(err, 'ERR', typeof err === 'number' && err < 0.2));
+  mGrid.appendChild(metricCard(rer, 'RER', typeof rer === 'number' && rer > 0.8));
+  mGrid.appendChild(metricCard(kc, 'KC', typeof kc === 'number' && kc > 0.7));
+  mGrid.appendChild(metricCard(mtbf, 'MTBF', false));
+  app.appendChild(mGrid);
+
+  // Rules table
+  const rulesSection = el('div', { class: 'section' });
+  rulesSection.appendChild(el('div', { class: 'section-title' }, `Active Rules (${rulesArr.length})`));
+  if (rulesArr.length) {
+    const table = el('table', { class: 'data-table' });
+    table.appendChild(el('thead', {}, el('tr', {},
+      el('th', {}, 'File'), el('th', {}, 'Created'), el('th', {}, 'Pattern'), el('th', {}, 'Text')
+    )));
+    const tbody = el('tbody');
+    rulesArr.forEach(r => {
+      tbody.appendChild(el('tr', {},
+        el('td', { style: 'font-family:var(--mono);font-size:.8rem' }, r.filename || r.file || '—'),
+        el('td', {}, fmtShortDate(r.created || r.created_at || r.date)),
+        el('td', {}, el('code', {}, r.pattern || '—')),
+        el('td', {}, r.text || r.description || r.rule || '—')
+      ));
+    });
+    table.appendChild(tbody);
+    rulesSection.appendChild(table);
+  } else {
+    rulesSection.appendChild(el('div', { class: 'empty-state' }, 'No rules yet'));
+  }
+  app.appendChild(rulesSection);
+
+  // Candidates table
+  const candSection = el('div', { class: 'section' });
+  candSection.appendChild(el('div', { class: 'section-title' }, `Candidates (${candArr.length})`));
+  if (candArr.length) {
+    const table = el('table', { class: 'data-table' });
+    table.appendChild(el('thead', {}, el('tr', {},
+      el('th', {}, 'File'), el('th', {}, 'Pattern'), el('th', {}, 'Text'), el('th', {}, 'Actions')
+    )));
+    const tbody = el('tbody');
+    candArr.forEach(c => {
+      const fname = c.filename || c.file || '—';
+      const approveBtn = el('button', { class: 'btn btn-primary btn-sm', onclick: async () => {
+        await api(`candidates/${encodeURIComponent(fname)}/approve`, { method: 'POST' });
+        render();
+      }}, 'Approve');
+      const rejectBtn = el('button', { class: 'btn btn-danger btn-sm', style: 'margin-left:6px', onclick: async () => {
+        await api(`candidates/${encodeURIComponent(fname)}/reject`, { method: 'POST' });
+        render();
+      }}, 'Reject');
+      const actions = el('td', {});
+      actions.appendChild(approveBtn);
+      actions.appendChild(rejectBtn);
+      tbody.appendChild(el('tr', {},
+        el('td', { style: 'font-family:var(--mono);font-size:.8rem' }, fname),
+        el('td', {}, el('code', {}, c.pattern || '—')),
+        el('td', {}, c.text || c.description || c.rule || '—'),
+        actions
+      ));
+    });
+    table.appendChild(tbody);
+    candSection.appendChild(table);
+  } else {
+    candSection.appendChild(el('div', { class: 'empty-state' }, 'No pending candidates'));
+  }
+  app.appendChild(candSection);
+}
+
+// ── Page: Sessions ─────────────────────────────────────────
+async function renderSessions(app) {
+  app.appendChild(el('div', { class: 'section section-title' }, 'Sessions'));
+
+  const sessions = await api('sessions');
+  const sessionsArr = sessions.data || sessions || [];
+
+  // Filters
+  const filter = el('div', { class: 'filter-row' });
+  const searchInput = el('input', { type: 'text', placeholder: 'Search tasks...' });
+  const modeSelect = el('select', {});
+  ['All', 'ALGORITHM', 'NATIVE', 'MINIMAL'].forEach(m => {
+    modeSelect.appendChild(el('option', { value: m === 'All' ? '' : m }, m));
+  });
+  filter.appendChild(searchInput);
+  filter.appendChild(modeSelect);
+  app.appendChild(filter);
+
+  const tableWrap = el('div', {});
+  app.appendChild(tableWrap);
+
+  let expanded = null;
+
+  function renderTable() {
+    tableWrap.innerHTML = '';
+    const q = searchInput.value.toLowerCase();
+    const modeFilter = modeSelect.value;
+
+    let filtered = Array.isArray(sessionsArr) ? sessionsArr : [];
+    if (q) filtered = filtered.filter(s => ((s.task || s.name || s.title || '') + (s.slug || '')).toLowerCase().includes(q));
+    if (modeFilter) filtered = filtered.filter(s => (s.mode || '').toUpperCase() === modeFilter);
+    filtered.sort((a, b) => new Date(b.timestamp || b.ts || b.date || 0) - new Date(a.timestamp || a.ts || a.date || 0));
+
+    if (!filtered.length) {
+      tableWrap.appendChild(el('div', { class: 'empty-state' },
+        el('div', { class: 'icon' }, '\uD83D\uDCC1'),
+        el('p', {}, 'No sessions recorded yet. Use Poseidon to see session history here.')
+      ));
+      return;
+    }
+
+    const table = el('table', { class: 'data-table' });
+    table.appendChild(el('thead', {}, el('tr', {},
+      el('th', {}, 'Date'), el('th', {}, 'Task'), el('th', {}, 'Mode'),
+      el('th', {}, 'Effort'), el('th', {}, 'Phase'), el('th', {}, 'Progress')
+    )));
+    const tbody = el('tbody');
+
+    filtered.forEach(s => {
+      const slug = s.slug || s.id || s.filename || '';
+      const row = el('tr', { style: 'cursor:pointer', onclick: () => {
+        expanded = expanded === slug ? null : slug;
+        renderTable();
+      }});
+      row.appendChild(el('td', {}, fmtShortDate(s.timestamp || s.ts || s.date)));
+      row.appendChild(el('td', {}, s.task || s.name || s.title || '—'));
+      const modeCell = el('td', {});
+      modeCell.appendChild(badgeMode(s.mode));
+      row.appendChild(modeCell);
+      row.appendChild(el('td', {}, String(s.effort ?? s.effort_score ?? '—')));
+      row.appendChild(el('td', {}, s.phase || '—'));
+      row.appendChild(el('td', {}, s.progress || '—'));
+      tbody.appendChild(row);
+
+      if (expanded === slug) {
+        const detail = el('tr', { class: 'expanded-row' });
+        const td = el('td', { colspan: '6' });
+        const fields = ['task', 'mode', 'effort', 'phase', 'progress', 'prd', 'content', 'description', 'notes'];
+        let content = '';
+        fields.forEach(f => { if (s[f]) content += `${f}: ${s[f]}\n`; });
+        td.textContent = content || JSON.stringify(s, null, 2);
+        detail.appendChild(td);
+        tbody.appendChild(detail);
+      }
+    });
+
+    table.appendChild(tbody);
+    tableWrap.appendChild(table);
+  }
+
+  searchInput.addEventListener('input', renderTable);
+  modeSelect.addEventListener('change', renderTable);
+  renderTable();
+}
+
+// ── Page: Settings ─────────────────────────────────────────
+async function renderSettings(app) {
+  app.appendChild(el('div', { class: 'section section-title' }, 'Settings'));
+
+  const settingsRes = await api('settings');
+  const settings = settingsRes.empty ? {} : (settingsRes.data || settingsRes || {});
+  let activeCategory = 'identity';
+
+  const layout = el('div', { class: 'settings-layout' });
+  const sidebar = el('div', { class: 'settings-sidebar' });
+  const main = el('div', { class: 'settings-main' });
+  layout.appendChild(sidebar);
+  layout.appendChild(main);
+  app.appendChild(layout);
+
+  const footer = el('div', { class: 'section', style: 'margin-top:20px;display:flex;gap:12px;align-items:center' });
+  const saveBtn = el('button', { class: 'btn btn-primary', onclick: saveSettings }, 'Save Settings');
+  const resetBtn = el('button', { class: 'btn btn-danger', onclick: () => { if (confirm('Reset all settings to defaults?')) { api('settings/reset', { method: 'POST' }).then(() => render()); } } }, 'Reset to Defaults');
+  const savedLabel = el('span', { class: 'kpi-label', style: 'margin-left:auto' }, settings._saved ? `Last saved: ${fmtDate(settings._saved)}` : '');
+  footer.appendChild(saveBtn);
+  footer.appendChild(resetBtn);
+  footer.appendChild(savedLabel);
+  app.appendChild(footer);
+
+  const categories = [
+    { id: 'identity', label: 'Identity' },
+    { id: 'security', label: 'Security' },
+    { id: 'learning', label: 'Learning' },
+    { id: 'classifier', label: 'Classifier' },
+    { id: 'channels', label: 'Channels' },
+    { id: 'advanced', label: 'Advanced' },
+  ];
+
+  function renderSidebar() {
+    sidebar.innerHTML = '';
+    categories.forEach(cat => {
+      sidebar.appendChild(el('button', {
+        class: `btn ${activeCategory === cat.id ? 'active' : ''}`,
+        onclick: () => { activeCategory = cat.id; renderSidebar(); renderMain(); }
+      }, cat.label));
+    });
+  }
+
+  function field(label, input) {
+    const f = el('div', { class: 'field' });
+    f.appendChild(el('label', {}, label));
+    f.appendChild(input);
+    return f;
+  }
+
+  function textInput(path, readonly = false) {
+    const val = getPath(settings, path);
+    const inp = el('input', { type: 'text', value: val ?? '', 'data-path': path });
+    if (readonly) inp.setAttribute('readonly', 'true');
+    inp.addEventListener('input', () => setPath(settings, path, inp.value));
+    return inp;
+  }
+
+  function numberInput(path, dflt) {
+    const val = getPath(settings, path);
+    const inp = el('input', { type: 'number', value: val ?? dflt ?? '', 'data-path': path });
+    inp.addEventListener('input', () => setPath(settings, path, Number(inp.value)));
+    return inp;
+  }
+
+  function rangeInput(path) {
+    const val = getPath(settings, path) ?? 50;
+    const wrap = el('div', { style: 'display:flex;align-items:center;gap:12px' });
+    const inp = el('input', { type: 'range', min: '0', max: '100', value: String(val) });
+    const num = el('span', { style: 'font-family:var(--mono);min-width:36px' }, String(val));
+    inp.addEventListener('input', () => { num.textContent = inp.value; setPath(settings, path, Number(inp.value)); });
+    wrap.appendChild(inp);
+    wrap.appendChild(num);
+    return wrap;
+  }
+
+  function selectInput(path, options) {
+    const val = getPath(settings, path) || '';
+    const sel = el('select', {});
+    options.forEach(o => {
+      const opt = el('option', { value: o }, o);
+      if (o === val) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change', () => setPath(settings, path, sel.value));
+    return sel;
+  }
+
+  function toggleInput(path) {
+    const val = getPath(settings, path);
+    const wrap = el('label', { class: 'toggle' });
+    const cb = el('input', { type: 'checkbox' });
+    cb.checked = !!val;
+    cb.addEventListener('change', () => setPath(settings, path, cb.checked));
+    wrap.appendChild(cb);
+    wrap.appendChild(document.createTextNode(val ? 'Enabled' : 'Disabled'));
+    return wrap;
+  }
+
+  function textareaInput(path) {
+    const val = getPath(settings, path);
+    const ta = el('textarea', { rows: '6' });
+    ta.value = typeof val === 'string' ? val : JSON.stringify(val ?? [], null, 2);
+    ta.addEventListener('input', () => { try { setPath(settings, path, JSON.parse(ta.value)); } catch {} });
+    return ta;
+  }
+
+  function getPath(obj, path) {
+    return path.split('.').reduce((o, k) => o && o[k], obj);
+  }
+
+  function setPath(obj, path, val) {
+    const parts = path.split('.');
+    let cur = obj;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!cur[parts[i]]) cur[parts[i]] = {};
+      cur = cur[parts[i]];
+    }
+    cur[parts[parts.length - 1]] = val;
+  }
+
+  function renderMain() {
+    main.innerHTML = '';
+    const card = el('div', { class: 'card' });
+
+    switch (activeCategory) {
+      case 'identity':
+        card.appendChild(field('Agent Name', textInput('agent_name')));
+        card.appendChild(field('User Name', textInput('user_name')));
+        card.appendChild(field('Communication Style', selectInput('communication_style', ['direct', 'friendly', 'formal', 'casual'])));
+        card.appendChild(field('Precision', rangeInput('traits.precision')));
+        card.appendChild(field('Humor', rangeInput('traits.humor')));
+        card.appendChild(field('Verbosity', rangeInput('traits.verbosity')));
+        card.appendChild(field('Autonomy', rangeInput('traits.autonomy')));
+        break;
+
+      case 'security':
+        card.appendChild(field('Patterns Path', textInput('security.patterns_path', true)));
+        card.appendChild(field('Output Scrubbing', toggleInput('security.output_scrubbing')));
+        card.appendChild(field('Scrub Patterns (JSON)', textareaInput('security.scrub_patterns')));
+        break;
+
+      case 'learning':
+        card.appendChild(field('Mode', selectInput('learning.mode', ['semi-autonomous', 'signal-only', 'none'])));
+        card.appendChild(field('Rule Deployment', selectInput('learning.rule_deployment', ['approval_required', 'auto'])));
+        card.appendChild(field('Error Capture Scope', selectInput('learning.error_capture.scope', ['all', 'commands_and_apis', 'commands_only'])));
+        card.appendChild(field('Min Occurrences for Rule', numberInput('learning.error_capture.min_occurrences_for_rule', 3)));
+        break;
+
+      case 'classifier':
+        card.appendChild(field('Algorithm Threshold', numberInput('classifier.algorithm_threshold', 56)));
+        card.appendChild(field('Native Ceiling', numberInput('classifier.native_ceiling', 55)));
+        card.appendChild(field('Learned Boost Cap', numberInput('classifier.learned_boost_cap', 20)));
+        card.appendChild(field('Pattern Decay Days', numberInput('classifier.pattern_decay_days', 90)));
+        break;
+
+      case 'channels':
+        card.appendChild(field('Enabled Channels', textareaInput('channels.enabled')));
+        card.appendChild(field('Max Messages/Minute', numberInput('channels.rate_limit.max_messages_per_minute', 30)));
+        break;
+
+      case 'advanced': {
+        const ta = el('textarea', { rows: '20', style: 'width:100%;font-family:var(--mono);font-size:.8rem' });
+        ta.value = JSON.stringify(settings, null, 2);
+        ta.addEventListener('input', () => {
+          try {
+            const parsed = JSON.parse(ta.value);
+            Object.assign(settings, parsed);
+            ta.style.borderColor = '';
+          } catch { ta.style.borderColor = 'var(--red)'; }
+        });
+        card.appendChild(field('Raw Configuration (JSON)', ta));
+        break;
+      }
+    }
+    main.appendChild(card);
+  }
+
+  async function saveSettings() {
+    saveBtn.textContent = 'Saving...';
+    saveBtn.disabled = true;
+    await api('settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(settings) });
+    saveBtn.textContent = 'Saved!';
+    setTimeout(() => { saveBtn.textContent = 'Save Settings'; saveBtn.disabled = false; }, 1500);
+  }
+
+  renderSidebar();
+  renderMain();
+}
+</script>
+</body>
+</html>
