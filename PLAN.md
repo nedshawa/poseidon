@@ -467,42 +467,47 @@ OS detection covers: macOS (brew), Debian/Ubuntu (apt), Fedora/RHEL (dnf), Arch 
 
 ## Phase 5: Multi-Channel Communication (Listeners)
 
+*Sources: Claude Researcher (communication), Gemini Researcher (architecture), Perplexity Researcher (voice benchmarks). Conflicts resolved via First Principles analysis.*
+
+### Core Principle
+
+A Claude Code session is a CLI process with one stdin. Multi-channel = multiplexing inputs into that stdin. Claude Code Channels (March 2026) solved this natively via MCP server events. Everything builds on that.
+
 ### Architecture
 
-Poseidon can be reached via multiple channels simultaneously. Channels are **configurable** — chosen during install, added/removed later via settings.json.
-
 ```
-┌─────────────┐     ┌──────────────────────┐     ┌─────────────────┐
-│  Terminal    │────▶│                      │     │  Voice Pipeline  │
-│  (native)   │     │   Claude Code         │     │  ┌───────────┐  │
-├─────────────┤     │   Session             │◀───▶│  │ Deepgram  │  │
-│  Telegram   │────▶│   (tmux/systemd)      │     │  │ Nova-3    │  │
-│  (Channels) │     │                      │     │  │ (STT)     │  │
-├─────────────┤     │   Hooks fire on all   │     │  └─────┬─────┘  │
-│  Discord    │────▶│   channels equally    │     │  ┌─────▼─────┐  │
-│  (Channels) │     │                      │     │  │ ElevenLabs│  │
-├─────────────┤     └──────────────────────┘     │  │ Flash v2.5│  │
-│  Voice      │────▶  (via LiveKit/Pipecat)      │  │ (TTS)     │  │
-│  (realtime) │                                  │  └───────────┘  │
-├─────────────┤                                  └─────────────────┘
-│  Webhooks   │────▶  (via Hookdeck, optional)
-└─────────────┘
+┌─────────────┐     ┌──────────────────────────────────┐
+│  Terminal    │────▶│                                  │
+│  (native)   │     │   Claude Code Session             │
+├─────────────┤     │   (tmux or systemd)               │
+│  Telegram   │────▶│                                  │
+│  (Channels) │     │   ┌──────────────────────────┐   │
+├─────────────┤     │   │ Message Buffer (filesystem)│   │
+│  Discord    │────▶│   │ Buffers during restart     │   │
+│  (Channels) │     │   └──────────────────────────┘   │
+├─────────────┤     │                                  │
+│  Voice      │────▶│   Hooks fire on ALL channels     │
+│  (LiveKit)  │     │   Security hooks apply equally   │
+├─────────────┤     │                                  │
+│  Webhooks   │────▶│   PreToolUse blocks destructive  │
+│  (Hookdeck) │     │   regardless of message source   │
+└─────────────┘     └──────────────────────────────────┘
 ```
 
 ### Available Channels
 
-| Channel | Type | Implementation | Prerequisites |
-|---------|------|---------------|---------------|
-| **Terminal** | Built-in | Native Claude Code | None |
-| **Telegram** | Text + voice messages | Claude Code Channels MCP plugin | Telegram bot token |
-| **Discord** | Text | Claude Code Channels MCP plugin | Discord bot token |
-| **Voice (realtime)** | Streaming audio | LiveKit Agents or Pipecat framework | Deepgram API key + ElevenLabs API key |
-| **Phone** | Voice calls | Twilio ConversationRelay | Twilio account ($3-8/mo) |
-| **Webhooks** | Events | Hookdeck → Channels | Hookdeck account (free tier) |
+| Channel | Type | Implementation | Prerequisites | Latency | Cost/mo |
+|---------|------|---------------|---------------|---------|---------|
+| **Terminal** | Built-in | Native Claude Code | None | 0ms | $0 |
+| **Telegram** | Text + voice msgs | Claude Code Channels MCP plugin | Bot token | ~1s | $0 |
+| **Discord** | Text | Claude Code Channels MCP plugin | Bot token | ~1s | $0 |
+| **Voice** | Streaming audio | LiveKit Agents + Deepgram + Cartesia | 3 API keys | ~400-500ms | $5-30* |
+| **Phone** | Voice calls | Twilio ConversationRelay | Twilio account | ~1-2s | $3-8 |
+| **Webhooks** | Events | Hookdeck → Channels | Hookdeck account | ~2s | $0 (free tier) |
 
-### Installer Channel Selection
+*Voice cost depends heavily on usage: ~$0.01/min STT + $0.04-0.18/min TTS. 30min/day ≈ $5-30/mo.*
 
-During `bun tools/init.ts`, a new step asks:
+### Installer Channel Selection (Configurable)
 
 ```
 Step X/N: Communication Channels
@@ -510,14 +515,16 @@ Step X/N: Communication Channels
   Which channels should Poseidon listen on? (select all that apply)
 
   [x] Terminal (always enabled)
-  [ ] Telegram — receive/send messages from phone, watch, web
-  [ ] Discord — receive/send messages from Discord servers
-  [ ] Voice (realtime) — speak and hear responses in real-time
-  [ ] Phone (Twilio) — call a phone number to talk to Poseidon
-  [ ] Webhooks (Hookdeck) — receive events from GitHub, Stripe, etc.
-```
+  [ ] Telegram — phone, watch, web ($0/mo)
+  [ ] Discord — servers and DMs ($0/mo)
+  [ ] Voice — real-time streaming (~$5-30/mo depending on usage)
+  [ ] Phone — call a number via Twilio (~$3-8/mo)
+  [ ] Webhooks — GitHub, Stripe, etc. events ($0/mo)
 
-Selected channels are stored in settings.json → `channels.enabled[]` and can be changed later.
+  Channels can be added/removed later in settings.json.
+
+  ⚠️ Voice: estimated $X/mo at Y min/day. See docs/channels/voice.md for details.
+```
 
 ### settings.json — channels section
 
@@ -525,21 +532,31 @@ Selected channels are stored in settings.json → `channels.enabled[]` and can b
 {
   "channels": {
     "enabled": ["terminal", "telegram"],
+    "rate_limit": {
+      "max_messages_per_minute": 10,
+      "batch_window_seconds": 5
+    },
     "telegram": {
       "bot_token_path": "telegram/bot_token",
-      "allowed_users": []
+      "allowed_users": [],
+      "allowed_chats": []
     },
     "discord": {
       "bot_token_path": "discord/bot_token",
-      "allowed_users": []
+      "allowed_users": [],
+      "allowed_servers": []
     },
     "voice": {
       "stt_provider": "deepgram",
       "stt_api_key_path": "deepgram/api_key",
-      "tts_provider": "elevenlabs",
-      "tts_api_key_path": "elevenlabs/api_key",
+      "tts_provider": "cartesia",
+      "tts_api_key_path": "cartesia/api_key",
       "tts_voice_id": "",
-      "framework": "livekit"
+      "tts_fallback": "system",
+      "stt_fallback": "whisper_local",
+      "framework": "livekit",
+      "livekit_url": "",
+      "livekit_api_key_path": "livekit/api_key"
     },
     "phone": {
       "provider": "twilio",
@@ -549,125 +566,219 @@ Selected channels are stored in settings.json → `channels.enabled[]` and can b
     },
     "webhooks": {
       "provider": "hookdeck",
-      "api_key_path": "hookdeck/api_key"
+      "api_key_path": "hookdeck/api_key",
+      "allowed_sources": ["github"]
     }
   }
 }
 ```
 
-All tokens stored via SecretClient (age-encrypted). Only paths referenced in settings.
+All tokens stored via SecretClient (age-encrypted). Rate limiting prevents API cost runaway.
 
 ### Voice Pipeline — Real-Time Streaming
-
-Architecture using LiveKit Agents (or Pipecat as alternative):
 
 ```
 User speaks → Microphone
   → LiveKit Room (WebRTC, sub-100ms transport)
-  → Deepgram Nova-3 (streaming STT, sub-300ms)
-  → Claude API (streaming response)
-  → ElevenLabs Flash v2.5 (streaming TTS, 75ms TTFB)
+  → Deepgram Nova-3 (streaming STT, sub-300ms, 6.84% WER)
+  → Claude API (streaming response, ~200ms TTFT)
+  → Cartesia Sonic Turbo (streaming TTS, 40ms TTFB)
   → LiveKit Room → Speaker
 
-Total round-trip: ~400-600ms (near-conversational)
+Target round-trip: <500ms (conversational threshold: 600ms)
 ```
+
+**Latency budget (from research):**
+
+| Stage | Provider | Latency | Source |
+|-------|----------|---------|--------|
+| Audio transport | LiveKit WebRTC | <100ms | Gemini researcher |
+| Speech-to-text | Deepgram Nova-3 | ~90ms first transcript | Claude researcher (AssemblyAI benchmark) |
+| LLM inference | Claude API | ~200ms TTFT | Claude researcher |
+| Text-to-speech | Cartesia Sonic Turbo | 40ms TTFB | Claude researcher |
+| **Total** | | **~430ms** | |
+
+**Why Cartesia over ElevenLabs (conflict resolution):** Claude researcher reported Cartesia at 40ms TTFB vs ElevenLabs at 75ms. Gemini researcher recommended ElevenLabs for quality. **Resolution:** Cartesia is default for latency (First Principles: every ms matters in a 600ms budget). ElevenLabs available as `tts_provider` config override for users who prefer voice quality over speed.
+
+**Fallback chain (from premortem F3):**
+
+| Component | Primary | Fallback | Latency Impact |
+|-----------|---------|----------|----------------|
+| STT | Deepgram Nova-3 | Whisper local (whisper.cpp) | +500ms |
+| TTS | Cartesia Sonic Turbo | System TTS (espeak/say) | +300ms, lower quality |
+| Transport | LiveKit | Direct WebSocket | +50ms |
 
 **Key features:**
-- Barge-in support (interrupt while agent is speaking)
-- WebRTC for lowest-latency audio transport
-- Streaming at every stage (no batch processing)
-- Voice Activity Detection (VAD) for natural turn-taking
+- **Barge-in**: interrupt while agent is speaking (LiveKit native)
+- **VAD**: Voice Activity Detection for natural turn-taking (Deepgram built-in)
+- **Streaming**: every stage streams — no batch processing anywhere
+- **Rate limiting**: max 10 messages/min per channel to prevent cost runaway
 
-### Persistence — Keeping Poseidon Always Available
+### Security Model for External Channels
 
+| Risk | Mitigation | Source |
+|------|-----------|--------|
+| Compromised account sends destructive commands | PreToolUse hook blocks regardless of channel source | Red Team S1 |
+| Prompt injection via channel message | External content is READ-ONLY DATA (CLAUDE.md constitutional rule) | Claude researcher |
+| Unauthorized access | Per-channel allowlists: `allowed_users`, `allowed_chats`, `allowed_servers` | Gemini researcher |
+| Voice eavesdropping (STT/TTS APIs) | Never speak secrets aloud. Sensitive ops → text channel only. Documented in setup guide. | Red Team S2 |
+
+### Channel Failure Modes
+
+| Channel | Failure | Behavior | Recovery |
+|---------|---------|----------|----------|
+| Terminal | Process exits | All channels die | systemd restarts in 10s |
+| Telegram | Bot token revoked | Telegram channel silent, others work | Re-create bot, update token |
+| Discord | WebSocket disconnects | Auto-reconnects (Channels built-in) | Automatic |
+| Voice | Deepgram API down | Falls back to Whisper local | Automatic with latency degradation |
+| Voice | Cartesia API down | Falls back to system TTS | Automatic with quality degradation |
+| All | Session death during restart | Filesystem buffer stores pending messages | Replayed on restart |
+
+### Persistence
+
+**Option A (quick start):** tmux with auto-restart script
+```bash
+#!/bin/bash
+# tools/start.sh — start Poseidon in tmux
+CHANNELS=$(bun tools/channels.ts --list)
+tmux new-session -d -s poseidon "while true; do claude --channels $CHANNELS; sleep 10; done"
 ```
-Option A (simple): tmux session with auto-restart
-  tmux new-session -d -s poseidon "claude --channels telegram discord"
 
-Option B (production): systemd service
-  [Unit]
-  Description=Poseidon AI Agent
-  After=network.target
+**Option B (production):** systemd user service
+```ini
+[Unit]
+Description=Poseidon AI Agent
+After=network.target
 
-  [Service]
-  ExecStart=/usr/bin/claude --channels telegram discord
-  WorkingDirectory=%h
-  Restart=always
-  RestartSec=10
-  Environment=POSEIDON_DIR=%h/.poseidon
+[Service]
+ExecStart=/usr/bin/claude --channels %i
+WorkingDirectory=%h
+Restart=always
+RestartSec=10
+Environment=POSEIDON_DIR=%h/.poseidon
 
-  [Install]
-  WantedBy=default.target
+[Install]
+WantedBy=default.target
+```
+
+**Message buffering during restart (from premortem F1):**
+```
+Session dies → restart in 10s
+  During those 10s:
+  → Telegram: messages queue on Telegram's servers (polling-based, auto-delivered on reconnect)
+  → Discord: messages queue on Discord's servers (WebSocket reconnect delivers backlog)
+  → Voice: drops connection, client retries
+  → Webhooks: Hookdeck retries with exponential backoff (built-in)
+No custom message buffer needed — each platform handles its own queuing.
 ```
 
 ### Build Tasks — Phase 5
 
 - [ ] Add channels section to settings.json schema
-- [ ] Add channel selection step to installer wizard
-- [ ] Channel launcher script (tools/channels.ts) — starts Claude Code with configured channels
+- [ ] Add channel selection step to installer wizard (with cost estimates for voice)
+- [ ] Rate limiting module (hooks/handlers/rate-limiter.ts)
+- [ ] Channel launcher script (tools/channels.ts) — reads config, starts Claude Code with flags
+- [ ] tmux start script (tools/start.sh)
 - [ ] systemd service template (tools/poseidon.service)
 - [ ] Telegram setup guide (docs/channels/telegram.md)
 - [ ] Discord setup guide (docs/channels/discord.md)
 - [ ] Voice pipeline integration (hooks/handlers/voice-pipeline.ts)
-- [ ] LiveKit Agents / Pipecat wrapper for voice channel
-- [ ] Voice channel setup guide (docs/channels/voice.md)
-- [ ] Test: Telegram message reaches Claude Code session and gets response
-- [ ] Test: Voice input → STT → Claude → TTS → voice output in <600ms
-- [ ] Test: Session persists across terminal disconnect (tmux/systemd)
+- [ ] LiveKit Agents wrapper with Deepgram STT + Cartesia TTS
+- [ ] Voice fallback chain (Whisper local + system TTS)
+- [ ] Voice channel setup guide with cost calculator (docs/channels/voice.md)
+- [ ] Test: Telegram message reaches session and gets response
+- [ ] Test: Voice round-trip <600ms with Deepgram + Cartesia
+- [ ] Test: Voice falls back to Whisper when Deepgram unavailable
+- [ ] Test: Session persists across disconnect (tmux and systemd)
+- [ ] Test: Rate limiter caps at 10 msg/min per channel
+- [ ] Test: Destructive command via Telegram blocked by PreToolUse
 
 ---
 
 ## Phase 6: Error Intelligence (Enhanced Learning)
 
-### The Problem
+*Sources: Claude Researcher (error systems), Red Team analysis. Known gap: GitHub #6371 (PostToolUse doesn't fire for failed Bash).*
 
-Poseidon v1.0 captures user frustration and explicit ratings, but doesn't automatically capture **system errors** — API failures, tool crashes, permission denials, timeouts. These are the most learnable errors because they have clear patterns and deterministic fixes.
+### Core Principle (from First Principles)
+
+Error learning has 5 links: **DETECT → DEDUPLICATE → GENERATE → INJECT → VERIFY**. Break any one and learning fails. The weakest link in most systems is injection — rules exist but never reach the agent at the right time. Poseidon's pre-prompt hook solves injection. This phase adds the other 4 links.
 
 ### Architecture — 3-Tier Error Capture
 
 ```
-Tier 1: CAPTURE (PostToolUse hook, <50ms)
-  │  Every tool call → detect error → fingerprint → append error-log.jsonl
+Tier 1: CAPTURE (PostToolUse hook, <50ms per call)
+  │  Every tool call → detect error from output → fingerprint → append error-log.jsonl
+  │  ERROR ENTRIES SCRUBBED by output-scrubber before writing (Red Team S3)
   │
   ▼
 Tier 2: ANALYZE (SessionEnd hook, ~5s)
   │  Session errors → cluster by fingerprint → detect patterns
   │  3+ same fingerprint across sessions = needs a rule
+  │  ALSO: parse transcript for Bash errors missed by PostToolUse (GitHub #6371 mitigation)
   │
   ▼
-Tier 3: LEARN (periodic background)
-  │  Cross-session patterns → generate rule candidates
-  │  User approves → inject into pre-prompt on similar future tasks
+Tier 3: LEARN (periodic background, minutes)
+  │  Cross-session patterns → LLM generates rule candidates
+  │  User approves → rule promoted to verified
+  │  Verified rules injected via pre-prompt (MAX 5 per prompt — context budget)
   │
   ▼
-Learning Score displayed at session start
+Learning Score computed and displayed at next session start
 ```
 
-### Error Fingerprinting
+### Error Fingerprinting (the deduplication engine)
 
 ```typescript
-// Strip variable parts, hash the template
+// Step 1: Templatize — strip variable parts
 "File not found: /home/user/project/src/index.ts"
-  → "File not found: {path}"
-  → hash("Read|1|FILE_NOT_FOUND|File not found: {path}")
-  → fingerprint: "a3f7b2c1e9d04518"
+  → replace paths: "File not found: {path}"
+  → replace dates: "{date}"
+  → replace IDs/hashes: "{hash}"
+  → replace IPs: "{ip}"
+  → replace ports: ":{port}"
+  → replace large numbers: "{num}"
+
+// Step 2: Hash — canonical fingerprint
+hash("Read" + "|" + "1" + "|" + "FILE_NOT_FOUND" + "|" + "File not found: {path}")
+  → "a3f7b2c1e9d04518"
 ```
 
-Same fingerprint = same root cause. Variable parts (paths, timestamps, IDs, ports) are stripped before hashing.
+Same fingerprint = same root cause. **Also includes tool_input context** to prevent false clusters (Red Team F4 mitigation).
 
-### Error Classification
+### Error Classification (6 domains, 3 severities)
 
-| Domain | Examples | Detection |
-|--------|----------|-----------|
-| **API/External** | 401, 403, 429, 503, timeout | HTTP status codes in output |
-| **Tool Execution** | exit code != 0, ENOENT, EACCES | Exit codes + stderr patterns |
-| **Logic/Reasoning** | Wrong output, hallucinated paths | User frustration signals |
-| **Configuration** | Missing env vars, wrong paths | Known error message patterns |
-| **Resource** | Disk full, OOM, quota exceeded | System error codes |
+| Domain | Examples | Detection Pattern | Severity |
+|--------|----------|-------------------|----------|
+| **API/External** | 401, 403, 429, 503, timeout | HTTP status codes in output | Varies |
+| **Tool Execution** | exit code != 0, ENOENT, EACCES | Exit codes + stderr patterns | Fatal/Degraded |
+| **Logic/Reasoning** | Wrong output, hallucinated paths | User frustration signals | Silent |
+| **Configuration** | Missing env vars, wrong paths | Known error message patterns | Recoverable |
+| **Resource** | Disk full, OOM, quota exceeded | System error codes | Fatal |
+| **Coordination** | Stale state, agent conflict | Race condition patterns | Transient |
 
-### Configurable Error Scope
+**Severity determines action:**
 
-During install or later in settings.json:
+| Severity | Definition | Automatic Action |
+|----------|-----------|-----------------|
+| **Fatal** | Task cannot continue | Capture + escalate immediately |
+| **Degraded** | Continues with reduced quality | Capture + log warning |
+| **Transient** | Self-resolving (rate limits, network) | Capture + retry with backoff |
+| **Silent** | Wrong output, no error signal | Captured only via user frustration |
+
+### GitHub #6371 Mitigation (PostToolUse gap)
+
+PostToolUse hooks don't fire for failed Bash commands in some Claude Code versions. **Dual capture strategy:**
+
+```
+Tier 1: PostToolUse hook (catches most errors)
+  +
+Tier 2: SessionEnd hook parses transcript for uncaptured Bash failures
+  → Scan transcript for "Exit code [non-zero]" patterns
+  → Scan for error keywords in Bash tool output blocks
+  → Capture any errors missed by Tier 1
+```
+
+### Configurable Error Scope (set at install, changeable later)
 
 ```json
 {
@@ -676,62 +787,117 @@ During install or later in settings.json:
       "scope": "all",
       "tools": ["Bash", "Read", "Write", "Edit", "WebSearch", "WebFetch", "Grep", "Glob"],
       "min_occurrences_for_rule": 3,
-      "auto_triage": true
+      "auto_triage": true,
+      "scrub_before_logging": true
+    },
+    "rule_injection": {
+      "max_rules_per_prompt": 5,
+      "match_by": ["tool", "error_class", "keywords"],
+      "min_confidence": 0.6
     }
   }
 }
 ```
 
-Scope options in installer:
-- **all** (recommended) — capture errors from all tools
+Installer scope options:
+- **all** (recommended) — capture errors from all tools (~50ms overhead per tool call)
 - **commands_and_apis** — Bash + WebSearch/WebFetch only
 - **commands_only** — Bash only
 
+### Rule Injection — Context Window Management (Red Team F2)
+
+Problem: 50+ rules × ~40 tokens each = 2000 tokens consumed. Context window pressure.
+
+**Solution: Relevance-scored top-5 injection.**
+
+```
+Per-prompt injection pipeline:
+  1. Load all verified rules from memory/learning/rules/
+  2. Score each rule against current context:
+     - tool_match: does the rule's error domain match tools likely to be used? (+3)
+     - keyword_match: do rule keywords appear in the prompt? (+2)
+     - recency: was this rule triggered recently? (+1)
+     - effectiveness: rule's RER score (+0 to +2)
+  3. Sort by score, take top 5
+  4. Inject: "Past learnings (relevant to this task):\n- When doing X, avoid Y because Z"
+```
+
+Max 5 rules × ~40 tokens = 200 tokens. Acceptable context budget.
+
 ### The Learning Score
 
-Displayed at session start:
+**Cold-start behavior (from premortem F5):**
 
 ```
-📊 Learning Score: 73/100 (↑4 from last week)
-   Errors prevented: 84%  |  Rules active: 12  |  Coverage: 71%
-   MTBF improvement: +2.3x over 30 days
+Sessions 1-10:  "📊 Learning: Calibrating... (3 errors captured, 0 rules yet)"
+Sessions 11+:   "📊 Learning Score: 73/100 (↑4 from last week)"
+                 "   Errors prevented: 84%  |  Rules active: 12  |  Coverage: 71%"
 ```
+
+Score only displays after 10 sessions AND at least 1 verified rule. Before that, show raw counts to set expectations.
 
 **Formula:**
 ```
-LearningScore = (30 × ErrorReductionRate) + (30 × RuleEffectiveness)
-              + (20 × KnowledgeCoverage) + (20 × normalized_MTBF)
+LearningScore = (30 × ERR) + (30 × RER) + (20 × KC) + (20 × MTBF_norm)
+
+Where:
+  ERR  = 1 - (recurring_errors / total_errors)           [0-1, higher = fewer repeats]
+  RER  = preventions / (preventions + failures)           [0-1, higher = rules work]
+  KC   = fingerprints_with_rules / total_fingerprints     [0-1, higher = more coverage]
+  MTBF_norm = min(1, current_MTBF / (2 × baseline_MTBF)) [0-1, capped improvement]
 
 Scale: 0-100
-  0-25:  Novice    — few rules, errors recurring
-  26-50: Learning  — rules generating, some prevention
-  51-75: Competent — most common errors prevented
-  76-100: Expert   — rare errors only, high effectiveness
+  0-25:  Novice    — few rules, errors recurring freely
+  26-50: Learning  — rules generating, some prevention working
+  51-75: Competent — most common errors have working prevention
+  76-100: Expert   — rare errors only, high rule effectiveness
 ```
+
+**Weight justification:** ERR and RER are weighted highest (30 each) because they directly measure "is learning preventing errors?" KC and MTBF are supporting metrics (20 each) — coverage shows breadth, MTBF shows system-level improvement. Research from Galileo's agent metrics framework confirms outcome metrics (did it work?) should outweigh process metrics (how much did we capture?).
 
 ### Metrics Stored
 
 File: `memory/learning/metrics.jsonl` (append-only, one entry per session)
 
 ```jsonl
-{"timestamp":"2026-04-15T10:00:00Z","learning_score":73,"err":0.16,"rer":0.84,"mtbf_hours":12.5,"kc":0.71,"lv_gen":3,"lv_verified":2,"total_rules":12,"total_fingerprints":17,"errors_this_session":2,"errors_prevented":8}
+{"ts":"2026-04-15T10:00:00Z","score":73,"err":0.84,"rer":0.84,"mtbf_h":12.5,"kc":0.71,"lv_gen":3,"lv_ver":2,"rules":12,"fingerprints":17,"errors":2,"prevented":8,"calibrating":false}
 ```
+
+### Error Log Security (Red Team S3)
+
+All error log entries pass through `output-scrubber` before writing:
+
+```
+Tool output: "Connection to api.openai.com failed with key sk-abc123def456..."
+  → Scrubbed: "Connection to api.openai.com failed with key [REDACTED-OPENAI]"
+  → Written to error-log.jsonl
+```
+
+`error-log.jsonl` is in `.gitignore` by default. Never committed.
 
 ### Build Tasks — Phase 6
 
 - [ ] ErrorCapture PostToolUse hook (hooks/error-capture.ts)
 - [ ] Error fingerprinting module (hooks/handlers/error-fingerprint.ts)
+- [ ] Error templatization rules (variable stripping patterns)
 - [ ] Error classification patterns (security/error-patterns.yaml)
-- [ ] Enhance session-end.ts with cross-session pattern detection
+- [ ] Enhance session-end.ts: transcript scanning for missed Bash errors (#6371)
+- [ ] Enhance session-end.ts: cross-session fingerprint pattern detection
+- [ ] Rule relevance scoring module (hooks/handlers/rule-scorer.ts)
+- [ ] Enhance pre-prompt.ts: top-5 relevance-filtered rule injection
 - [ ] Learning metrics computation (hooks/handlers/learning-metrics.ts)
-- [ ] Learning Score display in session-start.ts
-- [ ] Add error_capture config to settings.json schema
+- [ ] Learning Score display in session-start.ts (with cold-start "Calibrating")
+- [ ] Error log scrubbing (integrate output-scrubber into error-capture)
+- [ ] Add error_capture + rule_injection config to settings.json schema
 - [ ] Add error scope selection to installer
-- [ ] tools/learning-status.ts — CLI for detailed metrics
+- [ ] tools/learning-status.ts — CLI for detailed metrics breakdown
 - [ ] Test: Bash error captured with correct fingerprint
+- [ ] Test: Error log entry scrubbed of secrets before writing
 - [ ] Test: Same error 3x across sessions → rule candidate generated
-- [ ] Test: Approved rule injected → error prevented → RER updated
+- [ ] Test: Approved rule injected (top-5 filter) → error prevented → RER updated
+- [ ] Test: Learning Score shows "Calibrating" for first 10 sessions
 - [ ] Test: Learning Score increases after rule prevents error
+- [ ] Test: Transcript scanning catches Bash error missed by PostToolUse
 
 ---
 
