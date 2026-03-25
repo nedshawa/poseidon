@@ -120,15 +120,36 @@ function detectSecretInPrompt(prompt: string): { service: string; key: string; f
   }
 
   // Check for long alphanumeric strings (32+ chars) that look like API keys
-  // Only if the prompt mentions "key", "api", "token", "secret", "onboard"
-  if (/key|api|token|secret|onboard|credential/i.test(lower)) {
-    const longKey = prompt.match(/[a-zA-Z0-9_\-]{32,}/);
-    if (longKey) {
-      // Try to detect service from context
-      let detectedService = "_unknown";
-      for (const [svc, hints] of Object.entries(SERVICE_HINTS)) {
-        if (hints.some(h => lower.includes(h))) { detectedService = svc; break; }
-      }
+  // Two modes:
+  //   1. With keyword context: "key", "api", "token" etc. → capture from longer prompts
+  //   2. Without context: if the ENTIRE prompt is just a 20+ char alphanumeric string → almost certainly a key paste
+
+  const longKey = prompt.match(/[a-zA-Z0-9_\-]{20,}/);
+  if (longKey) {
+    // Detect service from any keyword hints in the prompt
+    let detectedService = "_unknown";
+    for (const [svc, hints] of Object.entries(SERVICE_HINTS)) {
+      if (hints.some(h => lower.includes(h))) { detectedService = svc; break; }
+    }
+
+    // Mode 1: prompt has keyword context → always capture
+    if (/key|api|token|secret|onboard|credential/i.test(lower)) {
+      return { service: detectedService, key: longKey[0], field: "api_key" };
+    }
+
+    // Mode 2: prompt IS just the key (nothing else meaningful)
+    // If the prompt is short and mostly the key, it's a raw paste
+    const trimmed = prompt.trim();
+    const keyRatio = longKey[0].length / trimmed.length;
+    if (keyRatio > 0.7 && trimmed.length < 200) {
+      // Read last prompt context from a temp file to detect service
+      // (user said "give you an fmp key" in previous prompt)
+      try {
+        const lastCtx = readFileSync(poseidonPath("memory", "learning", ".last-prompt-context"), "utf-8").trim();
+        for (const [svc, hints] of Object.entries(SERVICE_HINTS)) {
+          if (hints.some(h => lastCtx.toLowerCase().includes(h))) { detectedService = svc; break; }
+        }
+      } catch {}
       return { service: detectedService, key: longKey[0], field: "api_key" };
     }
   }
@@ -197,6 +218,14 @@ async function main() {
         `Confirm to the user: their ${detected.service} key has been stored at ${detected.service}/${detected.field}.`;
       console.error(`[pre-prompt] Secret detected and stored: ${detected.service}/${detected.field} (${masked})`);
     }
+
+    // Save prompt context for next prompt's key detection
+    // (e.g., user says "give you fmp key" now, pastes raw key next prompt)
+    try {
+      const ctxDir = poseidonPath("memory", "learning");
+      if (!existsSync(ctxDir)) { const { mkdirSync: mk } = require("fs"); mk(ctxDir, { recursive: true }); }
+      writeFileSync(poseidonPath("memory", "learning", ".last-prompt-context"), rawPrompt.slice(0, 200));
+    } catch {}
 
     const parts: string[] = [];
     // Check for project switch

@@ -1,6 +1,6 @@
 {
   "name": "poseidon",
-  "version": "2.2.3",
+  "version": "2.2.4",
   "description": "Personal AI Infrastructure for Claude Code",
   "scripts": {
     "init": "bun tools/init.ts",
