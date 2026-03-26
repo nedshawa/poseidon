@@ -1,58 +1,102 @@
 ---
-name: first-principles
+name: thinking
 description: >-
-  Decompose problems to fundamental truths, challenge inherited assumptions, and
-  reconstruct optimal solutions from verified constraints. Three-step framework:
-  Deconstruct, Challenge, Reconstruct.
-  USE WHEN first principles, decompose, fundamental, root cause, challenge assumptions,
-  rebuild from scratch, why do we do it this way.
+  Decompose to axioms, challenge inherited assumptions, reconstruct from verified truths. USE WHEN first principles, fundamental, root cause, decompose, challenge assumptions, rebuild from scratch.
 ---
 
-## Instructions
+## Customization
 
-Foundational reasoning that decomposes problems to irreducible truths rather than reasoning by analogy. Based on the physics-based thinking framework: strip away convention, find what is actually true, and build from there.
+**Before executing, check for user customizations at:**
+`docs/USER/SKILLCUSTOMIZATIONS/FirstPrinciples/`
 
-### The 3-Step Framework
+If this directory exists, load and apply any PREFERENCES.md, configurations, or resources found there. These override default behavior. If the directory does not exist, proceed with skill defaults.
+
+
+## Notifications
+
+Notifications handled by Poseidon's configurable notification system.
+See `docs/notifications.md` for configuration.
+
+## Core Concept
+
+**Reasoning by Analogy** (default, often wrong):
+- "How did we solve something similar?"
+- "What do others do?"
+- Copies existing solutions with slight variations
+
+**Reasoning from First Principles** (this skill):
+- "What are the fundamental truths here?"
+- "What is this actually made of?"
+- Rebuilds solutions from irreducible facts
+
+## When to Use
+
+- **Architects**: Challenge "is this actually a constraint or just how we've always done it?"
+- **Pentesters**: Identify actual attack surfaces vs. assumed security boundaries
+- **RedTeam**: Sharpen adversarial analysis by deconstructing assumptions
+- **Engineers**: When stuck, rebuild from fundamentals
+- **Any skill**: When inherited assumptions may be limiting the solution space
+
+
+## Workflow Routing
+
+Route to the appropriate workflow based on the request.
+
+**When executing a workflow, output this notification directly:**
 
 ```
-STEP 1: DECONSTRUCT       "What is this actually made of?"
-        |
-        v
-STEP 2: CHALLENGE          "Is this a real constraint or just habit?"
-        |
-        v
-STEP 3: RECONSTRUCT        "Given only the truths, what should we build?"
+Running the **WorkflowName** workflow in the **FirstPrinciples** skill to ACTION...
 ```
 
-### Workflow Routing
+  - Break problem into fundamental parts → `Workflows/Deconstruct.md`
+  - Challenge assumptions systematically → `Workflows/Challenge.md`
+  - Rebuild solution from fundamentals → `Workflows/Reconstruct.md`
 
-| Request | Route To |
-|---|---|
-| Break problem into parts, what is this made of | `workflows/deconstruct.md` |
-| Challenge assumptions, is this really required | `workflows/challenge.md` |
-| Rebuild from fundamentals, what would we build from scratch | `workflows/reconstruct.md` |
-| Full first-principles analysis (default) | Run all three steps sequentially |
+## The 3-Step Framework
 
-### Key Questions
+```
+┌─────────────────────────────────────────────────────────┐
+│  STEP 1: DECONSTRUCT                                    │
+│  "What is this really made of?"                         │
+│  Break down to constituent parts and fundamental truths │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────┐
+│  STEP 2: CHALLENGE                                      │
+│  "Is this a real constraint or an assumption?"          │
+│  Classify each element as hard/soft constraint          │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────┐
+│  STEP 3: RECONSTRUCT                                    │
+│  "Given only the truths, what's optimal?"               │
+│  Build new solution from fundamentals, ignoring form    │
+└─────────────────────────────────────────────────────────┘
+```
 
-**Deconstruct:**
+## Key Questions
+
+### Deconstruction Questions
 - What is this actually made of?
 - What are the constituent parts?
+- What is the actual cost/value of each part?
 - What would a physicist say about this?
 
-**Challenge:**
+### Challenge Questions
 - Is this a hard constraint (physics/reality) or soft constraint (policy/choice)?
-- What if we removed this entirely?
-- Who decided this and why?
+- What if we removed this constraint entirely?
+- Who decided this was a constraint and why?
+- What evidence supports this assumption?
 
-**Reconstruct:**
-- Given only the hard constraints, what would we build from scratch?
+### Reconstruction Questions
+- If we started from scratch with only the fundamental truths, what would we build?
 - What field has solved an analogous problem differently?
 - Are we optimizing function or form?
+- What's the simplest solution that satisfies only the hard constraints?
 
-### Constraint Classification
+## Constraint Classification
 
-When analyzing any system, classify every constraint:
+When analyzing any system, classify constraints:
 
 | Type | Definition | Example | Can Change? |
 |------|------------|---------|-------------|
@@ -60,9 +104,55 @@ When analyzing any system, classify every constraint:
 | **Soft** | Policy/choice | "We always use REST APIs" | Yes |
 | **Assumption** | Unvalidated belief | "Users won't accept that UX" | Maybe false |
 
-Only hard constraints are truly immutable. Everything else is a design choice.
+**Rule**: Only hard constraints are truly immutable. Soft constraints and assumptions should be challenged.
 
-### Output Format
+## Integration Pattern
+
+Other skills invoke FirstPrinciples like this:
+
+```markdown
+## Before Analysis
+→ Use FirstPrinciples/Challenge on all stated constraints
+→ Classify each as hard/soft/assumption
+
+## When Stuck
+→ Use FirstPrinciples/Deconstruct to break down the problem
+→ Use FirstPrinciples/Reconstruct to rebuild from fundamentals
+
+## For Adversarial Analysis
+→ RedTeam uses FirstPrinciples/Challenge to attack assumptions
+→ Pentester uses FirstPrinciples/Deconstruct on security model
+```
+
+## Examples
+
+### Example 1: Architecture Decision
+**Problem**: "We need microservices because that's how modern apps are built"
+
+**First Principles Analysis**:
+1. **Deconstruct**: What does this app actually need? (team size, scale, complexity)
+2. **Challenge**: Is "microservices" a hard constraint? No - it's reasoning by analogy
+3. **Reconstruct**: Given our 3-person team and moderate scale, a modular monolith optimizes for our actual constraints
+
+### Example 2: Security Assessment
+**Problem**: "The firewall protects the internal network"
+
+**First Principles Analysis**:
+1. **Deconstruct**: What is the firewall actually doing? (packet filtering on specific ports)
+2. **Challenge**: Does packet filtering = protection? What about authorized ports? Insider threats?
+3. **Reconstruct**: Protection requires defense in depth - firewall is one layer, not "the" protection
+
+### Example 3: Cost Optimization
+**Problem**: "Cloud hosting costs $10,000/month - that's just what it costs"
+
+**First Principles Analysis**:
+1. **Deconstruct**: What are we actually paying for? (compute, storage, bandwidth, managed services)
+2. **Challenge**: Is managed Kubernetes a hard requirement? Is this region required?
+3. **Reconstruct**: Actual compute needs = $2,000. The other $8,000 is convenience we're choosing to pay for
+
+## Output Format
+
+When using FirstPrinciples, output should include:
 
 ```markdown
 ## First Principles Analysis: [Topic]
@@ -72,48 +162,35 @@ Only hard constraints are truly immutable. Everything else is a design choice.
 - **Actual Values**: [Real costs/metrics, not market prices]
 
 ### Constraint Classification
-| Constraint | Type | Evidence | If Removed? |
-|------------|------|----------|-------------|
-| [X] | Hard/Soft/Assumption | [Why] | [What becomes possible] |
+| Constraint | Type | Evidence | Challenge |
+|------------|------|----------|-----------|
+| [X] | Hard/Soft/Assumption | [Why] | [What if removed?] |
 
 ### Reconstruction
-- **Hard Constraints Only**: [The immutable truths]
+- **Fundamental Truths**: [Only the hard constraints]
 - **Optimal Solution**: [Built from fundamentals]
-- **Key Insight**: [What assumption was limiting us?]
+- **Form vs Function**: [Are we optimizing the right thing?]
+
+### Key Insight
+[One sentence: what assumption was limiting us?]
 ```
 
-### Example 1: Architecture Decision
+## Principles
 
-**Problem**: "We need microservices because that's how modern apps are built."
+1. **Physics First** - Real constraints come from physics/reality, not convention
+2. **Function Over Form** - Optimize what you're trying to accomplish, not how it's traditionally done
+3. **Question Everything** - Every assumption is guilty until proven innocent
+4. **Cross-Domain Synthesis** - Solutions from unrelated fields often apply
+5. **Rebuild, Don't Patch** - When assumptions are wrong, start fresh rather than fixing
 
-1. **Deconstruct**: What does this app need? Team of 3, moderate scale, single deployment target.
-2. **Challenge**: "Microservices" is reasoning by analogy, not a hard constraint. Independent scaling is not needed at this scale.
-3. **Reconstruct**: A modular monolith satisfies all hard constraints (reliability, maintainability, team velocity) with 10x less operational complexity.
+## Anti-Patterns to Avoid
 
-**Key Insight**: "Modern architecture" was a soft constraint masquerading as a hard one.
+- **Reasoning by Analogy**: "Company X does it this way, so should we"
+- **Accepting Market Prices**: "Batteries cost $600/kWh" without checking material costs
+- **Form Fixation**: Improving the suitcase instead of inventing wheels
+- **Soft Constraint Worship**: Treating policies as physics
+- **Premature Optimization**: Optimizing before understanding fundamentals
 
-### Example 2: Cost Optimization
+---
 
-**Problem**: "Cloud hosting costs $10,000/month -- that's just what it costs."
-
-1. **Deconstruct**: Paying for compute ($1,200), storage ($800), bandwidth ($500), managed services ($7,500).
-2. **Challenge**: Managed Kubernetes is a soft constraint. Multi-region is an assumption (actual traffic is single-region). Premium support tier is unused.
-3. **Reconstruct**: Actual compute needs = $2,000/month. The other $8,000 is convenience we chose to pay for.
-
-**Key Insight**: "What it costs" was actually "what we chose to spend."
-
-### Principles
-
-1. **Physics First** -- Real constraints come from reality, not convention
-2. **Function Over Form** -- Optimize what you accomplish, not how it looks
-3. **Question Everything** -- Every assumption is guilty until proven innocent
-4. **Cross-Domain Synthesis** -- Unrelated fields often have applicable solutions
-5. **Rebuild, Don't Patch** -- When assumptions are wrong, start fresh
-
-### Anti-Patterns
-
-- Reasoning by analogy: "Company X does it this way"
-- Accepting market prices as fundamental costs
-- Improving the suitcase instead of inventing wheels
-- Treating policies as physics
-- Optimizing before understanding fundamentals
+**Attribution**: Framework derived from Elon Musk's first principles methodology as documented by James Clear, Mayo Oshin, and public interviews.

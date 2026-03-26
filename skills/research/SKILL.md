@@ -1,102 +1,138 @@
 ---
 name: research
 description: >-
-  Conducts multi-depth research from quick lookups to deep investigations with
-  parallel agents, citation verification, and quality scoring. Auto-selects
-  research depth from prompt complexity. USE WHEN research, investigate, look
-  into, find out, deep dive, what do we know about, compare, analyze landscape,
-  map the market, extensive research, quick research.
+  Comprehensive research and content extraction — quick/standard/extensive/deep modes with multi-agent parallel research, content retrieval, AI trends analysis, and 242+ Fabric patterns. USE WHEN research, do research, quick research, extensive research, deep investigation, find information, investigate, extract alpha, analyze content, retrieve content, use fabric, AI trends, Claude research, enhance content, extract knowledge, interview research, web scraping, YouTube extraction, standard research.
 ---
 
-## Overview
+## ⚠️ MANDATORY TRIGGER
 
-Multi-tier research system with automatic depth selection, named research agents per search provider, mandatory citation verification, and quality scoring. Scales from WebSearch-only to 4-provider parallel research.
+**When user says "research" (in any form), ALWAYS invoke this skill.**
 
-## Research Providers
+| User Says | Action |
+|-----------|--------|
+| "research" / "do research" / "research this" | → Standard mode (3 agents) |
+| "quick research" / "minor research" | → Quick mode (1 agent) |
+| "extensive research" / "deep research" | → Extensive mode (12 agents) |
+| "deep investigation" / "investigate [topic]" / "map the [X] landscape" | → Deep Investigation (iterative) |
 
-Each research agent is a named type tied to a specific search API:
+**"Research" alone = Standard mode. No exceptions.**
 
-| Icon | Agent Type | Provider | Strength | Required |
-|------|-----------|----------|----------|----------|
-| 🔵 | ClaudeResearcher | Claude WebSearch | Academic depth, analysis | Always available |
-| 🟣 | PerplexityResearcher | Perplexity API | Cited answers, real-time | API key optional |
-| 🟢 | GeminiResearcher | Google Gemini | Cross-domain synthesis | API key optional |
-| 🟠 | GrokResearcher | xAI Grok | Contrarian, unfiltered | API key optional |
+## Customization
 
-**Every research execution MUST announce which providers are being used before launching agents.** The user should always see: "🔍 Launching: 🔵 Claude + 🟣 Perplexity + 🟢 Gemini"
+**Before executing, check for user customizations at:**
+`docs/USER/SKILLCUSTOMIZATIONS/Research/`
 
-**Fallback:** If no API keys configured, all agents use 🔵 ClaudeResearcher (WebSearch). Different mandates, same provider.
+If this directory exists, load and apply any PREFERENCES.md, configurations, or resources found there. These override default behavior. If the directory does not exist, proceed with skill defaults.
 
-## Research Tiers
 
-| Tier | Name               | Agents | Queries | Time     | Trigger Score |
-|------|--------------------|--------|---------|----------|---------------|
-| 1    | Quick              | 1      | 1-3     | <30s     | 0-30          |
-| 2    | Standard (default) | 3      | 3-10    | 1-3 min  | 31-55         |
-| 3    | Extensive          | 4-10   | 10-50   | 5-20 min | 56-75         |
-| 4    | Deep Investigation | N      | 50+     | 20-60min | 76+           |
+## Notifications
 
-## Tier Auto-Selection
+Notifications handled by Poseidon's configurable notification system.
+See `docs/notifications.md` for configuration.
 
-The tier classifier scores prompt complexity (0-100) across five signals:
-entity count, temporal scope, comparison breadth, abstraction level, and explicit depth cues.
+## MANDATORY: URL Verification
 
-**Keyword overrides** (bypass scoring):
-- "quick research", "quick lookup" --> Tier 1
-- "extensive research", "comprehensive" --> Tier 3
-- "deep investigation", "map the landscape" --> Tier 4
+**READ:** `UrlVerificationProtocol.md` - Every URL must be verified before delivery.
 
-Run `handlers/tier-classifier.ts` to classify programmatically.
+Research agents hallucinate URLs. A single broken link is a catastrophic failure.
+
+---
+
 
 ## Workflow Routing
 
-| Request Pattern                        | Workflow                        |
-|----------------------------------------|---------------------------------|
-| Simple fact, definition, date          | workflows/quick.md              |
-| "Research X", comparison, multi-part   | workflows/standard.md           |
-| "Extensive", "deep dive", "comprehensive" | workflows/extensive.md       |
-| "Investigate", "map landscape"         | workflows/deep-investigation.md |
-| "Extract insights", "key takeaways"   | workflows/extract-alpha.md      |
-| URL blocked, CAPTCHA, content needed   | workflows/retrieve.md           |
+Route to the appropriate workflow based on the request.
 
-## Mandatory: URL Verification
+**CRITICAL:** For due diligence, company/person background checks, or vetting -> **INVOKE OSINT SKILL INSTEAD**
 
-Every URL included in research output MUST be verified before delivery.
-See `references/url-verification-protocol.md` for the full protocol.
-Never generate URLs from memory. Only use URLs found in search results.
+### Research Modes (Primary Workflows)
+- Quick/minor research (1 Perplexity, 1 query) -> `Workflows/QuickResearch.md`
+- Standard research - DEFAULT (3 agents: Perplexity + Claude + Gemini) -> `Workflows/StandardResearch.md`
+- Extensive research (4 types x 3 threads = 12 agents) -> `Workflows/ExtensiveResearch.md`
+- Deep investigation / iterative research (progressive deepening, loop-compatible) -> `Workflows/DeepInvestigation.md`
 
-## Quality Rubric
+### Deep Content Analysis
+- Extract alpha / deep analysis / highest-alpha insights -> `Workflows/ExtractAlpha.md`
 
-Four axes, each scored 0-10. Tier 2+ requires 6/10 minimum on the first three:
+### Content Retrieval
+- Difficulty accessing content (CAPTCHA, bot detection, blocking) -> `Workflows/Retrieve.md`
+- YouTube URL extraction (use `fabric -y URL` immediately) -> `Workflows/YoutubeExtraction.md`
+- Web scraping -> `Workflows/WebScraping.md`
 
-| Axis                  | What It Measures                              |
-|-----------------------|-----------------------------------------------|
-| Explicit Completeness | All aspects of the question addressed          |
-| Synthesis Quality     | Cross-source integration, not just listing     |
-| Citation Integrity    | Sources real, relevant, and properly attributed |
-| Clarity               | Well-structured, scannable, actionable         |
+### Specific Research Types
+- Claude WebSearch only (free, no API keys) -> `Workflows/ClaudeResearch.md`
+- Perplexity API research (use Quick for single-agent) -> `Workflows/QuickResearch.md`
+- Interview preparation (Tyler Cowen style) -> `Workflows/InterviewResearch.md`
+- AI trends analysis -> `Workflows/AnalyzeAiTrends.md`
 
-If any axis falls below threshold, the quality scorer triggers a re-research cycle
-targeting the weak axis. Run `handlers/quality-scorer.ts` for programmatic scoring.
+### Fabric Pattern Processing
+- Use Fabric patterns (242+ specialized prompts) -> `Workflows/Fabric.md`
 
-## Project Integration
+### Content Enhancement
+- Enhance/improve content -> `Workflows/Enhance.md`
+- Extract knowledge from content -> `Workflows/ExtractKnowledge.md`
 
-Research output persists to `memory/projects/{id}/knowledge/research/` when a project
-context is active. File naming: `{date}_{slug}.md`.
+---
 
-## Scope
+## Quick Reference
 
-This skill handles research and information gathering. It does NOT handle:
-- Code writing or implementation (use coding skills)
-- Security scanning or vulnerability assessment
-- People search or personal investigations (use investigation skill)
-- Decision-making (present findings; the user decides)
-- Legal, medical, or financial advice
+**READ:** `QuickReference.md` for detailed examples and mode comparison.
 
-## Handlers
+| Trigger | Mode | Speed |
+|---------|------|-------|
+| "quick research" | 1 Perplexity agent | ~10-15s |
+| "do research" | 3 agents (default) | ~15-30s |
+| "extensive research" | 12 agents | ~60-90s |
+| "deep investigation" | Progressive iteration | ~3-60min |
 
-| Handler                       | Purpose                                 |
-|-------------------------------|-----------------------------------------|
-| handlers/tier-classifier.ts   | Auto-select tier from prompt signals    |
-| handlers/citation-verifier.ts | Verify all URLs are live before delivery |
-| handlers/quality-scorer.ts    | 4-axis rubric scoring with thresholds   |
+---
+
+## Integration
+
+### Feeds Into
+- **blogging** - Research for blog posts
+- **newsletter** - Research for newsletters
+- **xpost** - Create posts from research
+
+### Uses
+- **be-creative** - deep thinking for extract alpha
+- **OSINT** - MANDATORY for company/people comprehensive research
+- **BrightData MCP** - CAPTCHA solving, advanced scraping
+- **Apify MCP** - RAG browser, specialized site scrapers
+
+---
+
+## Deep Investigation Mode
+
+**Progressive iterative research** that builds a persistent knowledge vault. Works in both single-run (one cycle) and loop mode (Algorithm-driven iterations).
+
+**Concept:** Broad landscape → discover entities → score importance/effort → deep-dive one at a time → loop until coverage complete.
+
+**Domain template packs** customize the investigation for specific domains:
+- `Templates/MarketResearch.md` — Companies, Products, People, Technologies, Trends, Investors
+- `Templates/ThreatLandscape.md` — Threat Actors, Campaigns, TTPs, Vulnerabilities, Tools, Defenders
+- No template? The workflow creates entity categories dynamically from the landscape research.
+
+**Example invocation:**
+```
+"Do a deep investigation of the AI agent market"
+→ Loads MarketResearch.md template
+→ Iteration 1: Broad landscape + first entity deep-dive
+→ Loop mode: Each iteration deep-dives the next highest-priority entity
+→ Exit: When all CRITICAL/HIGH entities researched + all categories covered
+```
+
+**Artifacts persist** at `memory/RESEARCH/{date}_{topic}/` — the vault survives across sessions.
+
+See `Workflows/DeepInvestigation.md` for full workflow details.
+
+---
+
+## File Organization
+
+**Working files (temporary work artifacts):** `memory/WORK/{current_work}/`
+- Read `memory/STATE/current-work.json` to get the `work_dir` value
+- All iterative work artifacts go in the current work item directory
+- This ties research artifacts to the work item for learning and context
+
+**History (permanent):** `History/research/YYYY-MM/YYYY-MM-DD_[topic]/`

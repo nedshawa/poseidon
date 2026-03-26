@@ -1,119 +1,88 @@
 ---
-name: red-team
+name: thinking
 description: >-
-  Adversarial analysis that finds failure modes, fatal flaws, and hidden risks.
-  Breaks arguments into atomic claims, attacks from multiple expert perspectives,
-  and produces steelman plus counter-argument.
-  USE WHEN red team, critique, stress test, attack idea, devil's advocate, find
-  weaknesses, poke holes, break this, what could go wrong.
+  32 adversarial agents to destroy weak arguments and find fatal flaws — parallel analysis and adversarial validation. USE WHEN red team, attack idea, counterarguments, critique, stress test, poke holes, devil's advocate, find weaknesses, break this, parallel analysis, adversarial validation.
 ---
 
-## Instructions
+## Customization
 
-Adversarial analysis that stress-tests ideas by attacking them from multiple perspectives. The goal is not to be contrarian -- it is to find the fundamental flaw that, if unchallenged, causes the entire structure to collapse.
+**Before executing, check for user customizations at:**
+`docs/USER/SKILLCUSTOMIZATIONS/RedTeam/`
 
-### Objective
+If this directory exists, load and apply any PREFERENCES.md, configurations, or resources found there. These override default behavior. If the directory does not exist, proceed with skill defaults.
 
-For any argument, proposal, or plan, find:
-- The **5 most likely failure modes**
-- The **3 worst-case risks**
-- The **2 biggest cost/effort traps**
 
-### Workflow Routing
+## Notifications
 
-| Request | Route To |
-|---|---|
-| Full stress test, red team analysis, find all weaknesses | `workflows/stress-test.md` |
-| Quick critique (just the top flaws) | Execute inline -- top 3 flaws only |
+Notifications handled by Poseidon's configurable notification system.
+See `docs/notifications.md` for configuration.
 
-### Method
+zes findings, and produces devastating counter-arguments with steelman representations.
 
-1. **Decompose**: Break argument into atomic claims
-2. **Attack**: Challenge each claim from multiple perspectives
-3. **Synthesize**: Identify convergent weaknesses
-4. **Steelman**: Present the strongest version of the argument first
-5. **Counter-Argue**: Deliver the strongest rebuttal
 
-### Attack Perspectives
+## Workflow Routing
 
-Each claim is examined from these angles:
+Route to the appropriate workflow based on the request.
 
-| Perspective | Focus | Key Question |
-|---|---|---|
-| **Engineer** | Technical feasibility, scaling | "Where does this break at scale?" |
-| **Architect** | Structural integrity, trade-offs | "What are the second-order effects?" |
-| **Security Researcher** | Adversarial exploitation | "How would I exploit this?" |
-| **Skeptical User** | Adoption, real-world use | "Why would I actually use this?" |
-| **Competitor** | Market dynamics, moat | "How would I defeat this?" |
-| **Regulator** | Compliance, legal exposure | "What rules does this violate?" |
+**When executing a workflow, output this notification directly:**
 
-### Severity Classification
-
-| Severity | Definition | Action |
-|----------|------------|--------|
-| **Critical** | Blocks success entirely | Must fix before proceeding |
-| **Major** | Degrades quality significantly | Should fix, can workaround short-term |
-| **Minor** | Cosmetic or edge-case | Fix when convenient |
-
-### Output Format
-
-```markdown
-## Red Team Analysis: [Subject]
-
-### Steelman (Best Version of the Argument)
-1. [Strongest supporting point]
-2. [Second strongest point]
-3. [Third strongest point]
-
-### Weaknesses Found
-
-**Critical:**
-- [Flaw]: [Why it blocks success] | Perspective: [who found it]
-
-**Major:**
-- [Flaw]: [Why it degrades quality] | Perspective: [who found it]
-
-**Minor:**
-- [Flaw]: [Edge case or cosmetic issue]
-
-### Fatal Flaws
-If any single issue could collapse the entire argument:
-- **[The fatal flaw]**: [Why this is unsurvivable]
-
-### Recommendations
-1. [How to address the most critical weakness]
-2. [How to mitigate the major risks]
-3. [What to monitor for]
+```
+Running the **WorkflowName** workflow in the **RedTeam** skill to ACTION...
 ```
 
-### Example 1: Architecture Proposal
+| Trigger | Workflow |
+|---------|----------|
+| Red team analysis (stress-test existing content) | `Workflows/ParallelAnalysis.md` |
+| Adversarial validation (produce new content via competition) | `Workflows/AdversarialValidation.md` |
 
-**Argument**: "We should migrate our monolith to microservices over the next quarter."
+---
 
-**Steelman**: Independent deployment enables faster iteration. Team boundaries align with service boundaries. Failure isolation prevents cascading outages.
+## Quick Reference
 
-**Critical Flaws**:
-- "One quarter" timeline assumes no data migration complexity -- distributed data is the hardest part and is not addressed
-- Team of 6 engineers cannot operate 12+ services -- operational burden exceeds capacity
-- No mention of observability investment -- debugging distributed systems without tracing is flying blind
+| Workflow | Purpose | Output |
+|----------|---------|--------|
+| **ParallelAnalysis** | Stress-test existing content | Steelman + Counter-argument (8-points each) |
+| **AdversarialValidation** | Produce new content via competition | Synthesized solution from competing proposals |
 
-**Fatal Flaw**: The proposal solves a scaling problem the team does not have while creating an operational complexity problem they cannot handle.
+**The Five-Phase Protocol (ParallelAnalysis):**
+1. **Decomposition** - Break into 24 atomic claims
+2. **Parallel Analysis** - 32 agents examine strengths AND weaknesses
+3. **Synthesis** - Identify convergent insights
+4. **Steelman** - Strongest version of the argument
+5. **Counter-Argument** - Strongest rebuttal
 
-### Example 2: Business Decision
+---
 
-**Argument**: "We should raise prices 20% to improve margins."
+## Context Files
 
-**Steelman**: Current pricing undervalues the product. Competitors charge more. Existing customers depend on us (high switching cost).
+- `Philosophy.md` - Core philosophy, success criteria, agent types
+- `Integration.md` - Skill integration, FirstPrinciples usage, output format
 
-**Critical Flaws**:
-- Assumes price elasticity is zero -- no analysis of churn risk at 20% increase
-- Ignores that 3 competitors launched cheaper alternatives last quarter
-- "High switching cost" is an assumption, not validated -- survey your customers
+---
 
-**Fatal Flaw**: The argument assumes customers have no alternatives, but the competitive landscape changed 90 days ago.
+## Examples
 
-### Integration
+**Attack an architecture proposal:**
+```
+User: "red team this microservices migration plan"
+--> Workflows/ParallelAnalysis.md
+--> Returns steelman + devastating counter-argument (8 points each)
+```
 
-- **Chain with first-principles**: Decompose first, then red-team the decomposition
-- **Chain with creative**: Red-team finds flaws, creative brainstorms fixes
-- **Chain with council**: Council debates options, red-team attacks the winner
+**Devil's advocate on a business decision:**
+```
+User: "poke holes in my plan to raise prices 20%"
+--> Workflows/ParallelAnalysis.md
+--> Surfaces the ONE core issue that could collapse the plan
+```
+
+**Adversarial validation for content:**
+```
+User: "battle of bots - which approach is better for this feature?"
+--> Workflows/AdversarialValidation.md
+--> Synthesizes best solution from competing ideas
+```
+
+---
+
+**Last Updated:** 2025-12-20
