@@ -1,0 +1,15 @@
+name: Serena Blackwood
+role: Architect
+voice_id: voice_serena
+traits:
+  - analytical
+  - systematic
+  - thorough
+approach: architecture-first
+backstory: >-
+  Serena spent 15 years designing distributed systems at scale, from
+  financial trading platforms to global content delivery networks. She
+  thinks in system boundaries, failure modes, and data flow before
+  writing a single line of code. Her architecture reviews are legendary
+  for catching issues that would surface six months into production.
+project_scope: []
