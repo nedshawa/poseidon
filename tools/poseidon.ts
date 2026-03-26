@@ -348,6 +348,99 @@ function cmdOnboard(args: string[]): void {
   }
 }
 
+// ── Project Picker (displayed before LLM spawn) ────────────────
+
+function displayProjectPicker(overrideProject?: string): void {
+  const settingsPath = join(POSEIDON_DIR, "settings.json");
+  let active = "main";
+  try {
+    const settings = JSON.parse(readFileSync(settingsPath, "utf-8"));
+    active = overrideProject || settings?.project?.active_project || "main";
+  } catch {}
+
+  // Ensure main project exists
+  const projectsDir = join(POSEIDON_DIR, "memory", "projects");
+  const mainDir = join(projectsDir, "main");
+  if (!existsSync(mainDir)) {
+    try {
+      const { mkdirSync: mk, writeFileSync: wf } = require("fs");
+      mk(join(mainDir, "knowledge"), { recursive: true });
+      for (const f of ["CONTEXT.md", "GOALS.md", "DECISIONS.md", "RULES.md"]) {
+        wf(join(mainDir, f), `# ${f.replace(".md", "")}\n`);
+      }
+      wf(join(mainDir, "META.yaml"), `name: "Main"\nstatus: active\ncreated: "${new Date().toISOString()}"\ndescription: "Default project"\ntags: [default]\nlast_used: "${new Date().toISOString()}"\n`);
+    } catch {}
+  }
+
+  // Load projects
+  interface ProjInfo { slug: string; lastUsed: Date; decisions: number; }
+  const projects: ProjInfo[] = [];
+  try {
+    for (const slug of readdirSync(projectsDir)) {
+      if (slug.startsWith(".")) continue;
+      const d = join(projectsDir, slug);
+      try { if (!statSync(d).isDirectory()) continue; } catch { continue; }
+      const meta = (() => {
+        try {
+          const raw = readFileSync(join(d, "META.yaml"), "utf-8");
+          const status = raw.match(/^status:\s*(\S+)/m)?.[1] || "active";
+          if (status === "archived" || status === "complete") return null;
+          const lu = raw.match(/^last_used:\s*"?([^"\n]*)"?/m)?.[1];
+          return { lastUsed: new Date(lu || 0) };
+        } catch { return { lastUsed: new Date(0) }; }
+      })();
+      if (!meta) continue;
+      const decisions = (() => {
+        try {
+          const raw = readFileSync(join(d, "DECISIONS.md"), "utf-8");
+          return (raw.match(/^## /gm) || []).length;
+        } catch { return 0; }
+      })();
+      projects.push({ slug, lastUsed: meta.lastUsed, decisions });
+    }
+  } catch {}
+  projects.sort((a, b) => b.lastUsed.getTime() - a.lastUsed.getTime());
+
+  const timeAgo = (d: Date): string => {
+    const m = Math.floor((Date.now() - d.getTime()) / 60000);
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    return h < 24 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
+  };
+
+  const activeProj = projects.find(p => p.slug === active);
+  const others = projects.filter(p => p.slug !== active);
+
+  console.log("");
+  console.log(`  ${BOLD}${GOLD}Project Selection${RESET}`);
+  console.log(`  ${DARK_GRAY}${"─".repeat(50)}${RESET}`);
+
+  // Option A
+  if (activeProj) {
+    console.log(`  ${GREEN}▶ A:${RESET} Continue with ${BOLD}${active}${RESET} ${DARK_GRAY}(${timeAgo(activeProj.lastUsed)} │ ${activeProj.decisions} decisions)${RESET}`);
+  } else {
+    console.log(`  ${GREEN}▶ A:${RESET} Use ${BOLD}main${RESET} project ${DARK_GRAY}(default workspace)${RESET}`);
+  }
+
+  // Option B
+  if (others.length > 0) {
+    console.log(`  ${fg(88, 166, 255)}▶ B:${RESET} Switch to:`);
+    let idx = 1;
+    for (const p of others.slice(0, 6)) {
+      console.log(`       ${idx}. ${BOLD}${p.slug}${RESET} ${DARK_GRAY}(${timeAgo(p.lastUsed)})${RESET}`);
+      idx++;
+    }
+    if (others.length > 6) console.log(`       ${DARK_GRAY}... and ${others.length - 6} more${RESET}`);
+  } else {
+    console.log(`  ${fg(88, 166, 255)}▶ B:${RESET} Switch to: ${DARK_GRAY}(no other projects yet)${RESET}`);
+  }
+
+  // Option C
+  console.log(`  ${AMBER}▶ C:${RESET} Create new project ${DARK_GRAY}(say "new project [name]")${RESET}`);
+  console.log(`  ${DARK_GRAY}${"─".repeat(50)}${RESET}`);
+  console.log("");
+}
+
 // ── Main Launch ─────────────────────────────────────────────────
 
 async function launch(parsed: ParsedArgs): Promise<void> {
@@ -361,6 +454,9 @@ async function launch(parsed: ParsedArgs): Promise<void> {
     contextUsed: 0,
     contextMax: parseInt(llm.defaultContextSize) || 1000,
   });
+
+  // Display project picker (before spawning LLM so user sees it)
+  displayProjectPicker(parsed.project);
 
   // Update active project if specified
   if (parsed.project) {
