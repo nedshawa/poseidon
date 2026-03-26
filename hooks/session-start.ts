@@ -236,10 +236,36 @@ async function main() {
     // If no active project set, default to main
     const active = settings.project?.active_project || "main";
     const parts: string[] = [];
-    // 1. Project picker
+    // 1. Project picker — show on BOTH stderr (user sees) and stdout (Claude sees)
     const projects = loadProjects();
     const picker = buildPicker(projects, active, agent);
-    if (picker) parts.push(picker);
+    if (picker) {
+      // User-visible project picker on stderr
+      console.error("");
+      console.error("  \x1b[38;2;255;215;0m\x1b[1m" + agent + " \u2014 Project Selection\x1b[0m");
+      console.error("  \x1b[38;2;80;80;80m" + "\u2500".repeat(50) + "\x1b[0m");
+      const activeProject = projects.find(p => p.slug === active);
+      if (activeProject) {
+        console.error(`  \x1b[38;2;63;185;80m\u25B6 A:\x1b[0m Continue with \x1b[1m${active}\x1b[0m (${timeAgo(activeProject.lastUsed)})`);
+      } else {
+        console.error(`  \x1b[38;2;63;185;80m\u25B6 A:\x1b[0m Use \x1b[1mmain\x1b[0m project (default)`);
+      }
+      const others = projects.filter(p => p.slug !== active);
+      if (others.length > 0) {
+        console.error(`  \x1b[38;2;88;166;255m\u25B6 B:\x1b[0m Switch to:`);
+        let idx = 1;
+        for (const p of others.slice(0, 6)) {
+          const stale = p.stale ? " \x1b[33m\u26a0\x1b[0m" : "";
+          console.error(`       ${idx}. \x1b[1m${p.slug}\x1b[0m \x1b[2m(${timeAgo(p.lastUsed)})\x1b[0m${stale}`);
+          idx++;
+        }
+      }
+      console.error(`  \x1b[38;2;218;165;32m\u25B6 C:\x1b[0m Create new project`);
+      console.error("  \x1b[38;2;80;80;80m" + "\u2500".repeat(50) + "\x1b[0m");
+      console.error("");
+      // Also include in system-reminder so Claude knows the project context
+      parts.push(picker);
+    }
     // 2. TELOS
     const telos = loadTelosFiles();
     if (telos) parts.push(telos);

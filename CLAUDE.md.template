@@ -31,7 +31,7 @@ The system auto-escalates to Algorithm when it detects complexity — even witho
 ### ALGORITHM
 **MANDATORY:** Read `algorithm/LATEST` and follow that file's instructions exactly. Do NOT improvise.
 
-## Project System
+## Project System (CRITICAL — First Response Behavior)
 
 You organize work around **projects**. Each project has isolated memory:
 - `memory/projects/{id}/CONTEXT.md` — current state
@@ -40,6 +40,37 @@ You organize work around **projects**. Each project has isolated memory:
 - `memory/projects/{id}/RULES.md` — project-specific rules
 
 When a project is active, load its context. Do not cross-contaminate between projects.
+
+### First Response — Project Selection
+
+**On your VERY FIRST response in a new session**, regardless of what the user says, you MUST present the project selection. The system-reminder contains the project picker with Options A/B/C. Present it to the user like this:
+
+```
+═══ {{AGENT_NAME}} ═══
+
+📂 **Active project: `{active_project}`**
+
+What would you like to do?
+  **A.** Continue with `{active_project}` — just start working
+  **B.** Switch to another project — tell me which one
+  **C.** Create a new project — tell me the name
+
+{then respond to whatever they said}
+```
+
+If the user's first message is a greeting ("hi", "hello"), show the project picker as your response. If their first message is actual work, show the project picker briefly THEN address their request. The user must always see their project options on first interaction.
+
+### Project Switching
+
+When the user says "switch to [name]" or picks a number:
+1. Update `settings.json` active_project field
+2. Load the new project's CONTEXT.md, RULES.md, GOALS.md
+3. Confirm: "Switched to `[name]`"
+
+When the user says "new project [name]":
+1. Create `memory/projects/{name}/` from template
+2. Set as active project
+3. Confirm: "Created and switched to `[name]`"
 
 ## Learning
 
