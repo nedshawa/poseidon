@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 // session-start.ts — Project picker, context loading, learning score, status line
 // TRIGGER: SessionStart
-import { readFileSync, existsSync, readdirSync, statSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSync, copyFileSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
 import { getBaseDir, getSettingsPath, poseidonPath, TELOS_DIR, STEERING_RULES_PATH, PROJECTS_DIR, SKILLS_DIR, RULES_DIR, CANDIDATES_DIR, SECURITY_DIR } from "./lib/paths";
@@ -56,23 +56,75 @@ function timeAgo(d: Date): string {
   const h = Math.floor(m / 60);
   return h < 24 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
 }
+function ensureMainProject(): void {
+  const dir = PROJECTS_DIR();
+  const mainDir = join(dir, "main");
+  if (existsSync(mainDir)) return;
+  // Create main project from template
+  const templateDir = join(dir, ".template");
+  try {
+    mkdirSync(mainDir, { recursive: true });
+    mkdirSync(join(mainDir, "knowledge"), { recursive: true });
+    // Copy template files
+    for (const f of ["CONTEXT.md", "GOALS.md", "DECISIONS.md", "RULES.md"]) {
+      const src = join(templateDir, f);
+      if (existsSync(src)) copyFileSync(src, join(mainDir, f));
+      else writeFileSync(join(mainDir, f), `# ${f.replace(".md", "")}\n`);
+    }
+    // Write META.yaml
+    writeFileSync(join(mainDir, "META.yaml"),
+`name: "Main"
+status: active
+created: "${new Date().toISOString()}"
+description: "Default project — general purpose workspace"
+tags: [default]
+last_used: "${new Date().toISOString()}"
+`);
+  } catch {}
+}
+
 function buildPicker(projects: ProjectInfo[], active: string | null, agent: string): string {
-  if (!projects.length) return "";
-  const lines: string[] = [`\u26a1 ${agent} \u2014 Select Project\n`, "  Recent:"];
-  let idx = 1;
-  for (const p of projects.slice(0, 5)) {
-    const a = p.slug === active ? " \u2190 active" : "";
-    const s = p.stale ? " \u26a0 stale" : "";
-    lines.push(`    ${idx}. ${p.slug} (${timeAgo(p.lastUsed)}) \u2502 ${p.decisions} decisions \u2502 ${p.rules} rules${a}${s}`);
-    idx++;
+  const activeName = active || "main";
+  const activeProject = projects.find(p => p.slug === activeName);
+  const otherProjects = projects.filter(p => p.slug !== activeName);
+
+  const lines: string[] = [];
+  lines.push(`# ${agent} — Project Selection`);
+  lines.push("");
+
+  // Option A: Use current/main project
+  if (activeProject) {
+    lines.push(`**Option A: Continue with \`${activeName}\`** (${timeAgo(activeProject.lastUsed)} \u2502 ${activeProject.decisions} decisions \u2502 ${activeProject.rules} rules)`);
+    lines.push(`  Just start working or say "continue" to stay on this project.`);
+  } else {
+    lines.push(`**Option A: Use \`main\` project** (default workspace)`);
+    lines.push(`  Just start working — main project loads automatically.`);
   }
-  if (projects.length > 5) {
-    lines.push("\n  Other:");
-    for (const p of projects.slice(5)) { lines.push(`    ${idx}. ${p.slug}${p.stale ? " \u26a0 stale" : ""}`); idx++; }
+  lines.push("");
+
+  // Option B: Switch to another project
+  if (otherProjects.length > 0) {
+    lines.push(`**Option B: Switch to a project:**`);
+    let idx = 1;
+    for (const p of otherProjects.slice(0, 8)) {
+      const stale = p.stale ? " \u26a0 stale" : "";
+      lines.push(`  ${idx}. \`${p.slug}\` (${timeAgo(p.lastUsed)}) \u2502 ${p.decisions} decisions \u2502 ${p.rules} rules${stale}`);
+      idx++;
+    }
+    if (otherProjects.length > 8) {
+      lines.push(`  ... and ${otherProjects.length - 8} more`);
+    }
+    lines.push(`  Say "switch to [name]" or type the number.`);
+  } else {
+    lines.push(`**Option B: Switch to a project:**`);
+    lines.push(`  No other projects yet.`);
   }
-  if (!projects.some((p) => p.slug === "_general")) lines.push(`\n    ${idx}. _general (global workspace)`);
-  const name = active || projects[0]?.slug || "_general";
-  lines.push(`\n  "continue" or just start working = stay on ${name}`, "  Type a number or project name to switch", '  "new" = create new project');
+  lines.push("");
+
+  // Option C: Create new project
+  lines.push(`**Option C: Create a new project**`);
+  lines.push(`  Say "new project [name]" to create and switch to a new project.`);
+
   return lines.join("\n");
 }
 function loadTelosFiles(): string {
@@ -177,7 +229,12 @@ async function main() {
     const input = await readHookInput();
     const settings = loadSettings();
     const agent = settings.identity?.agent_name || "Poseidon";
-    const active = settings.project?.active_project || null;
+
+    // Ensure main project exists as default
+    ensureMainProject();
+
+    // If no active project set, default to main
+    const active = settings.project?.active_project || "main";
     const parts: string[] = [];
     // 1. Project picker
     const projects = loadProjects();
