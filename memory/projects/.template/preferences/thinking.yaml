@@ -1,0 +1,6 @@
+# Thinking skill preferences for this project
+# Uncomment and modify the settings you want to customize.
+
+# default_mode: first-principles  # first-principles | council | red-team | creative | science | world-model | iterative-depth
+# always_red_team: false          # always red-team conclusions before presenting
+# min_perspectives: 3             # minimum perspectives for council debates

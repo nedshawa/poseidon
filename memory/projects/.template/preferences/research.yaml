@@ -1,0 +1,9 @@
+# Research skill preferences for this project
+# Uncomment and modify the settings you want to customize.
+# If this file doesn't exist or is empty, skill uses global defaults.
+
+# default_tier: standard          # quick | standard | extensive | deep
+# preferred_sources: []           # perplexity, claude, gemini, grok (empty = all)
+# auto_persist: true              # auto-save research to knowledge/
+# output_format: structured       # structured | freeform
+# domain: ""                      # finance, security, tech, etc.

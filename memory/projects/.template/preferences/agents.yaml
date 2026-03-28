@@ -1,0 +1,6 @@
+# Agent preferences for this project
+# Uncomment and modify the settings you want to customize.
+
+# preferred_agents: []            # serena, marcus, rook, ava, alex (empty = any)
+# default_model: sonnet           # haiku | sonnet | opus
+# max_parallel: 3                 # max parallel agents for this project

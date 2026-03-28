@@ -26,8 +26,24 @@ New projects inherit ALL of the above. Not a blank slate — a fully equipped wo
 ### Project-Scoped (isolated, ONLY changes between projects)
 
 - `CONTEXT.md`, `GOALS.md`, `DECISIONS.md`, `RULES.md`, `knowledge/`
+- `preferences/` — YAML files that customize how skills behave for THIS project
 
 When switching projects, only these change. Universal knowledge stays.
+
+### Skill Preferences (How Projects Customize Skills)
+
+Skills are universal (the logic never changes). Projects customize skills via `preferences/*.yaml`:
+
+```
+memory/projects/{id}/preferences/
+├── research.yaml    → default_tier, preferred_sources, domain
+├── thinking.yaml    → default_mode, always_red_team
+└── agents.yaml      → preferred_agents, default_model
+```
+
+If the system-reminder contains project skill preferences, **adapt your behavior accordingly.** For example, if research preferences say `default_tier: extensive`, use extensive research even if the user just says "research this." If thinking preferences say `always_red_team: true`, red-team every conclusion before presenting it.
+
+If no preferences exist for a skill, use the skill's default behavior.
 
 ## Project System
 

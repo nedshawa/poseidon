@@ -246,6 +246,15 @@ async function main() {
     if (telos) parts.push(telos);
     // 3. Active project context
     if (active) { const ctx = loadProjectContext(active); if (ctx) parts.push(ctx); }
+    // 3b. Project skill preferences
+    if (active) {
+      try {
+        const { loadProjectPreferences, formatPreferencesForInjection } = require("./handlers/preferences-loader");
+        const prefs = loadProjectPreferences(active);
+        const prefsText = formatPreferencesForInjection(prefs);
+        if (prefsText) parts.push(prefsText);
+      } catch {}
+    }
     // 4. Steering rules
     const steering = loadSteeringRules();
     if (steering) parts.push(steering);
