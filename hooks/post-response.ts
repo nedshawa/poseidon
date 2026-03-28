@@ -3,7 +3,7 @@
 // TRIGGER: Stop (runs after every assistant response)
 
 import { readHookInput, type HookInput } from "./lib/hook-io";
-import { readFileSync, writeFileSync, mkdirSync, appendFileSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, appendFileSync, existsSync, readdirSync, statSync } from "fs";
 import { join } from "path";
 import {
   getSettingsPath,
@@ -12,6 +12,7 @@ import {
   FAILURES_DIR,
   PROJECTS_DIR,
 } from "./lib/paths";
+import { syncPrdToState } from "./handlers/prd-sync";
 
 interface Signal {
   timestamp: string;
@@ -209,6 +210,22 @@ async function main() {
         }
       } catch {}
     }
+    // PRD sync — update work.json from any PRD changes this session
+    try {
+      const workDir = poseidonPath("memory", "work");
+      if (existsSync(workDir)) {
+        const dirs = readdirSync(workDir).filter((d: string) => {
+          try { return statSync(join(workDir, d)).isDirectory(); } catch { return false; }
+        }).sort().reverse();
+        if (dirs.length > 0) {
+          const latestPrd = join(workDir, dirs[0], "PRD.md");
+          if (existsSync(latestPrd)) {
+            syncPrdToState(latestPrd);
+          }
+        }
+      }
+    } catch {}
+
     console.error(`\u2699 Stop \u2502 sentiment: neutral${contextUpdated ? " \u2502 project CONTEXT.md updated" : ""}`);
   } catch (err) {
     console.error(`\u2699 Stop \u2502 error: ${err}`);

@@ -8,6 +8,8 @@ import { readFileSync, existsSync, mkdirSync, appendFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { poseidonPath, SECURITY_DIR, LOGS_DIR } from "./lib/paths";
+import { guardAgentExecution } from "./handlers/agent-guard";
+import { guardSkillExecution } from "./handlers/skill-guard";
 
 interface PatternRule { pattern: string; reason: string; }
 interface SecurityPatterns {
@@ -63,6 +65,17 @@ function log(level: string, tool: string, detail: string): void {
     appendFileSync(join(dir, "security.jsonl"), entry + "\n");
   } catch { /* logging must never block */ }
 }
+
+const HARDCODED_BLOCKED = [
+  /rm\s+-rf\s+\//,
+  /:()\s*\{\s*:\|:&\s*\}\s*;:/,
+  /mkfs\./,
+  /dd\s+if=\/dev\/(zero|random|urandom)\s+of=\/dev\/sd/,
+  /chmod\s+777/,
+  /echo\s+\$.*(_KEY|_TOKEN|_SECRET|_PASSWORD)/,
+  /cat.*\.vault-token/,
+  /curl.*-d.*\$.*(_KEY|_TOKEN|_SECRET)/,
+];
 
 function loadPatterns(): SecurityPatterns | null {
   for (const loc of [poseidonPath("security", "patterns.yaml"), join(SECURITY_DIR(), "patterns.yaml")]) {
@@ -132,13 +145,43 @@ async function main() {
   try {
     const input = await readHookInput();
     const tool = input.tool_name || "";
+
+    // Agent/Skill guards
+    if (tool === "Task" || tool === "Agent") {
+      const result = guardAgentExecution(tool, input.tool_input);
+      if (!result.allow) {
+        blockTool(result.reason || "Agent execution blocked");
+        return;
+      }
+    }
+    if (tool === "Skill") {
+      const skillName = input.tool_input?.skill || input.tool_input?.name || "";
+      const result = guardSkillExecution(skillName);
+      if (!result.allow) {
+        blockTool(result.reason || "Skill execution blocked");
+        return;
+      }
+    }
+
     if (!["Bash", "Edit", "Write", "Read"].includes(tool)) {
       console.error(`\u2699 PreTool \u2502 ${tool} \u2502 \u2713 allowed`);
       allowTool(); return;
     }
     const patterns = loadPatterns();
     if (!patterns) {
-      console.error(`\u2699 PreTool \u2502 ${tool} \u2502 \u2713 allowed \u2502 no patterns.yaml`);
+      // Fail-closed: use hardcoded blocked patterns for Bash commands
+      if (tool === "Bash") {
+        const cmd = input.tool_input?.command || "";
+        for (const re of HARDCODED_BLOCKED) {
+          if (re.test(cmd)) {
+            log("BLOCKED", "Bash", `Hardcoded block: ${cmd.slice(0, 120)}`);
+            console.error(`\u2699 PreTool \u2502 Bash \u2502 \ud83d\udea8 BLOCKED \u2502 hardcoded safety pattern`);
+            blockTool("Command blocked by hardcoded safety pattern");
+            return;
+          }
+        }
+      }
+      console.error(`\u2699 PreTool \u2502 ${tool} \u2502 \u2713 allowed \u2502 no patterns.yaml (hardcoded check passed)`);
       allowTool(); return;
     }
     if (tool === "Bash") validateBash(input, patterns);

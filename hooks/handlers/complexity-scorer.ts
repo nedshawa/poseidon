@@ -138,6 +138,15 @@ export function scoreComplexity(prompt: string, options?: {
     }
   }
 
+  // Strong signal fast-track: thinking and investigation questions are ALWAYS algorithm-level
+  // A single strong signal with a real question (>3 words) should escalate regardless of total score
+  const hasStrongSignal = signals.includes("thinking_question") || signals.includes("investigation_question");
+  const isRealQuestion = trimmed.split(/\s+/).length > 3;
+  if (hasStrongSignal && isRealQuestion && score < settings.algorithm_threshold) {
+    score = settings.algorithm_threshold; // Boost to threshold
+    signals.push("strong_signal_escalation");
+  }
+
   const mode = score >= settings.algorithm_threshold ? "ALGORITHM" as const : "NATIVE" as const;
   return { mode, score, signals, escalated: mode === "ALGORITHM" };
 }

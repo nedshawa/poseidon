@@ -8,6 +8,7 @@ import { getSettingsPath, PROJECTS_DIR } from "./lib/paths";
 import { scoreComplexity, stripModeFlag } from "./handlers/complexity-scorer";
 import type { ComplexityResult } from "./handlers/complexity-scorer";
 import { getRelevantMistakes } from "./handlers/mistake-injector";
+import { generateSessionName, saveSessionName } from "./handlers/session-auto-name";
 
 function loadSettings(): any {
   try { const p = getSettingsPath(); return existsSync(p) ? JSON.parse(readFileSync(p, "utf-8")) : {}; } catch { return {}; }
@@ -232,6 +233,15 @@ async function main() {
     const input = await readHookInput();
     const rawPrompt = input.prompt || "";
     if (!rawPrompt.trim()) return;
+
+    // Auto-name session on first prompt
+    try {
+      const sessionId = (input as any)?.session_id;
+      if (sessionId && rawPrompt) {
+        const name = generateSessionName(rawPrompt);
+        saveSessionName(sessionId, name);
+      }
+    } catch {}
 
     // ── SECRET AUTO-CAPTURE (detects keys, stores them, warns Poseidon) ──
     let secretNote = "";

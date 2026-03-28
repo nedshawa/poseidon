@@ -124,6 +124,26 @@
             "command": "bun ${POSEIDON_DIR}/hooks/pre-tool.ts"
           }
         ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun ${POSEIDON_DIR}/hooks/pre-tool.ts",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun ${POSEIDON_DIR}/hooks/pre-tool.ts",
+            "timeout": 5000
+          }
+        ]
       }
     ],
     "PostToolUse": [
