@@ -2,7 +2,22 @@
 
 Load context on-demand by reading the file at the path listed. Only load what the current task requires.
 
-## System
+## Guides (HOW to do things)
+
+| Topic | Path |
+|-------|------|
+| Guides index | `guides/index.md` |
+| System manifest template | `guides/templates/system-manifest.md` |
+| Project setup guide | `guides/templates/project-setup.md` |
+| Skill creation guide | `guides/templates/skill-creation.md` |
+| Secret management | `guides/operations/secret-management.md` |
+| Research workflow | `guides/operations/research-workflow.md` |
+| Algorithm execution | `guides/operations/algorithm-execution.md` |
+| Agent deployment | `guides/operations/agent-deployment.md` |
+| API key handling | `guides/security/api-key-handling.md` |
+| Tool safety | `guides/security/tool-safety.md` |
+
+## System (WHAT things are)
 
 | Topic | Path |
 |-------|------|
