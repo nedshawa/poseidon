@@ -3,3 +3,9 @@ status: active  # active | paused | complete | archived
 created: ""
 description: ""
 tags: []
+last_used: ""
+
+# Research configuration (optional — defaults to global settings if not set)
+# research_default: standard  # quick | standard | extensive | deep
+# preferred_sources: []       # perplexity, claude, gemini, grok (empty = use all)
+# domain: ""                  # finance, security, tech, etc. (for source memory filtering)
