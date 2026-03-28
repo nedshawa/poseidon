@@ -308,13 +308,81 @@ async function main() {
     } catch {}
 
     // Detect session abandonments for escalation learning
-    let abandoned = false;
     try {
       detectAbandonment(input);
     } catch {}
 
-    const parts = [`${totalCandidates} rule candidates generated`];
+    // --- NEW: Relationship memory (extract W/B/O notes from session) ---
+    let relationshipNotes = 0;
+    try {
+      const { extractRelationshipNotes, appendToRelationshipLog } = require("./handlers/relationship-memory");
+      const userMsgs = parseTranscriptMessages(input.transcript_path || "");
+      if (userMsgs.length > 0) {
+        const notes = extractRelationshipNotes(userMsgs, []);
+        if (notes.length > 0) {
+          const baseDir = poseidonPath();
+          appendToRelationshipLog(notes, baseDir);
+          relationshipNotes = notes.length;
+        }
+      }
+    } catch {}
+
+    // --- NEW: Doc integrity check (deterministic, no inference) ---
+    let integrityIssues = 0;
+    try {
+      const { checkDocIntegrity } = require("./handlers/doc-integrity");
+      const issues = checkDocIntegrity(poseidonPath());
+      integrityIssues = issues.length;
+      // Log high-severity issues to stderr
+      for (const issue of issues.filter((i: any) => i.severity === "high")) {
+        console.error(`\u2699 DocIntegrity \u2502 ${issue.type}: ${issue.detail}`);
+      }
+    } catch {}
+
+    // --- NEW: Work completion (mark current work as completed) ---
+    try {
+      const workDir = poseidonPath("memory", "work");
+      if (existsSync(workDir)) {
+        const dirs = readdirSync(workDir).filter((d) => {
+          try { return statSync(join(workDir, d)).isDirectory(); } catch { return false; }
+        }).sort().reverse();
+        if (dirs.length > 0) {
+          const latestPrd = join(workDir, dirs[0], "PRD.md");
+          if (existsSync(latestPrd)) {
+            const prdContent = readFileSync(latestPrd, "utf-8");
+            // Mark as complete if phase is verify or learn
+            if (/phase:\s*(verify|learn|complete)/.test(prdContent) && !/phase:\s*complete/.test(prdContent)) {
+              const updated = prdContent.replace(/phase:\s*\w+/, "phase: complete");
+              writeFileSync(latestPrd, updated);
+            }
+          }
+        }
+      }
+    } catch {}
+
+    // --- NEW: Work completion learning (hook-level, catches non-Algorithm sessions) ---
+    try {
+      const { analyzeWorkCompletion, persistWorkReflection } = require("./handlers/work-completion");
+      const userMsgs = parseTranscriptMessages(input.transcript_path || "");
+      if (userMsgs.length > 0) {
+        const reflection = analyzeWorkCompletion(userMsgs, [], input.session_id || "unknown");
+        persistWorkReflection(reflection);
+      }
+    } catch {}
+
+    // --- NEW: Drift detection (check for behavioral drift in long sessions) ---
+    let driftSignals = 0;
+    try {
+      const { detectDrift } = require("./handlers/drift-detection");
+      // We'd need assistant messages from transcript — simplified: just log availability
+      driftSignals = 0; // Drift detection available but needs assistant message parsing
+    } catch {}
+
+    // --- Consolidated status output ---
+    const parts = [`${totalCandidates} rule candidates`];
     if (claudeRebuilt) parts.push("CLAUDE.md rebuilt");
+    if (relationshipNotes > 0) parts.push(`${relationshipNotes} relationship notes`);
+    if (integrityIssues > 0) parts.push(`${integrityIssues} doc issues`);
     parts.push(`abandoned: ${input.reason === "user_exit" ? "no" : input.reason || "unknown"}`);
     console.error(`\u2699 SessionEnd \u2502 ${parts.join(" \u2502 ")}`);
   } catch (err) {

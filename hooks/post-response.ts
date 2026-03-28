@@ -226,6 +226,15 @@ async function main() {
       }
     } catch {}
 
+    // --- Voice completion (fire and forget) ---
+    try {
+      const { processResponseForVoice } = require("./handlers/voice-completion");
+      const lastMsg = (input as any)?.last_assistant_message;
+      if (lastMsg) {
+        processResponseForVoice(lastMsg); // async, don't await — non-blocking
+      }
+    } catch {}
+
     console.error(`\u2699 Stop \u2502 sentiment: neutral${contextUpdated ? " \u2502 project CONTEXT.md updated" : ""}`);
   } catch (err) {
     console.error(`\u2699 Stop \u2502 error: ${err}`);
