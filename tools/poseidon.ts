@@ -230,10 +230,10 @@ function cmdProjects(): void {
     return;
   }
 
-  let activeProject = "_general";
+  let activeProject = "main";
   try {
     const settings = JSON.parse(readFileSync(join(POSEIDON_DIR, "settings.json"), "utf-8"));
-    activeProject = settings?.project?.active_project || "_general";
+    activeProject = settings?.project?.active_project || "main";
   } catch {}
 
   const dirs = readdirSync(projDir).filter(d => {

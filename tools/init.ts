@@ -761,8 +761,8 @@ async function stepBuild(
     console.log(`    [ok] Created project: ${project.name} (${project.slug})`);
   }
 
-  // 12b. Create _general project (global workspace)
-  const generalDir = join(installDir, "memory", "projects", "_general");
+  // 12b. Create main project (global workspace)
+  const generalDir = join(installDir, "memory", "projects", "main");
   if (!existsSync(generalDir)) {
     ensureDir(join(generalDir, "knowledge"));
     ensureDir(join(generalDir, "sessions"));
@@ -771,14 +771,14 @@ async function stepBuild(
       const src = join(templateDir, file);
       if (existsSync(src)) copyFileSync(src, join(generalDir, file));
     }
-    const generalMeta = `name: "_general"\nstatus: active\ncreated: "${new Date().toISOString().split("T")[0]}"\ndescription: "Global workspace for non-project tasks"\nlast_used: "${new Date().toISOString()}"\ntags: []\n`;
+    const generalMeta = `name: "main"\nstatus: active\ncreated: "${new Date().toISOString().split("T")[0]}"\ndescription: "Global workspace for non-project tasks"\nlast_used: "${new Date().toISOString()}"\ntags: []\n`;
     writeFileSync(join(generalDir, "META.yaml"), generalMeta);
-    console.log("    [ok] Created _general project (global workspace)");
+    console.log("    [ok] Created main project (global workspace)");
   }
 
-  // 12c. Default active_project to _general if no project was created
+  // 12c. Default active_project to main if no project was created
   if (!project) {
-    settings.project.active_project = "_general";
+    settings.project.active_project = "main";
     writeFileSync(
       join(installDir, "settings.json"),
       JSON.stringify(settings, null, 2) + "\n"

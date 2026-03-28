@@ -152,9 +152,9 @@ function countErrorsToday(): number {
 function getActiveProject(): string {
   try {
     const settings = JSON.parse(readFileSync(join(POSEIDON_DIR, "settings.json"), "utf-8"));
-    return settings?.project?.active_project || "_general";
+    return settings?.project?.active_project || "main";
   } catch {
-    return "_general";
+    return "main";
   }
 }
 

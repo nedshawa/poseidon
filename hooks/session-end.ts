@@ -94,7 +94,6 @@ failure_ref: ${failure.path}
 `;
 
   writeFileSync(candidatePath, content);
-  console.error(`[session-end] Rule candidate created: ${candidatePath}`);
 }
 
 function rebuildClaudeMdIfNeeded(): void {
@@ -108,7 +107,7 @@ function rebuildClaudeMdIfNeeded(): void {
     // Check for a template
     const templatePath = poseidonPath("templates", "CLAUDE.md.template");
     if (!existsSync(templatePath)) {
-      console.error("[session-end] No CLAUDE.md template found, skipping rebuild");
+      // No template — skip rebuild
       return;
     }
 
@@ -130,10 +129,10 @@ function rebuildClaudeMdIfNeeded(): void {
       );
       const claudeMdPath = poseidonPath("CLAUDE.md");
       writeFileSync(claudeMdPath, template);
-      console.error(`[session-end] CLAUDE.md rebuilt with ${rulesBlock.length} rules`);
+      // CLAUDE.md rebuilt — logged in consolidated output
     }
   } catch (err) {
-    console.error(`[session-end] CLAUDE.md rebuild error: ${err}`);
+    // CLAUDE.md rebuild error — non-blocking
   }
 }
 
@@ -206,11 +205,9 @@ function detectAbandonment(input: HookInput): void {
     mkdirSync(dirname(filePath), { recursive: true });
     appendFileSync(filePath, JSON.stringify(entry) + "\n");
 
-    console.error(
-      `[session-end] Abandonment detected: score=${result.score}, signals=[${result.signals.join(", ")}], hash=${hash}`
-    );
+    // abandonment logged — consolidated in main output
   } catch (err) {
-    console.error(`[session-end] Abandonment detection error (non-blocking): ${err}`);
+    // abandonment detection error — non-blocking
   }
 }
 
@@ -280,7 +277,7 @@ cross_session_count: ${sessions.size}
 
     return newCandidates;
   } catch (err) {
-    console.error(`[session-end] Cross-session detection error: ${err}`);
+    // cross-session detection error — non-blocking
     return 0;
   }
 }
@@ -288,8 +285,6 @@ cross_session_count: ${sessions.size}
 async function main() {
   try {
     const input = await readHookInput();
-    console.error(`[session-end] Session ending (reason: ${input.reason || "unknown"})`);
-
     // Scan recent failures and generate candidates
     const failures = getRecentFailures();
     let candidatesCreated = 0;
@@ -303,18 +298,27 @@ async function main() {
 
     // Detect cross-session error patterns from error log
     const crossSessionCandidates = detectCrossSessionPatterns();
+    const totalCandidates = candidatesCreated + crossSessionCandidates;
 
     // Rebuild CLAUDE.md if approved rules exist
-    rebuildClaudeMdIfNeeded();
+    let claudeRebuilt = false;
+    try {
+      rebuildClaudeMdIfNeeded();
+      claudeRebuilt = existsSync(poseidonPath("CLAUDE.md"));
+    } catch {}
 
     // Detect session abandonments for escalation learning
-    detectAbandonment(input);
+    let abandoned = false;
+    try {
+      detectAbandonment(input);
+    } catch {}
 
-    console.error(
-      `[session-end] Summary: ${failures.length} recent failures, ${candidatesCreated} new candidates, ${crossSessionCandidates} cross-session patterns`
-    );
+    const parts = [`${totalCandidates} rule candidates generated`];
+    if (claudeRebuilt) parts.push("CLAUDE.md rebuilt");
+    parts.push(`abandoned: ${input.reason === "user_exit" ? "no" : input.reason || "unknown"}`);
+    console.error(`\u2699 SessionEnd \u2502 ${parts.join(" \u2502 ")}`);
   } catch (err) {
-    console.error(`[session-end] Error (non-blocking): ${err}`);
+    console.error(`\u2699 SessionEnd \u2502 error: ${err}`);
   }
 }
 

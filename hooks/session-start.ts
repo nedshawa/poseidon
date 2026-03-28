@@ -278,7 +278,7 @@ async function main() {
         return (readFileSync(reg, "utf-8").match(/\u2713 active/g) || []).length;
       } catch { return 0; }
     })();
-    console.error(`\u2699 SessionStart \u2502 telos ${telos ? "\u2713" : "\u2717"} \u2502 project: ${active || "_general"} \u2502 rules: ${ruleCount} \u2502 secrets: ${secretCount} available`);
+    console.error(`\u2699 SessionStart \u2502 telos ${telos ? "\u2713" : "\u2717"} \u2502 project: ${active || "main"} \u2502 rules: ${ruleCount} \u2502 secrets: ${secretCount} available`);
   } catch (err) {
     console.error(`\u2699 SessionStart \u2502 error: ${err}`);
   }

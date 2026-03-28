@@ -25,7 +25,7 @@
     }
   },
   "project": {
-    "active_project": "_general",
+    "active_project": "main",
     "association_priority": ["explicit", "active", "cwd", "keyword", "recent"]
   },
   "telos": {

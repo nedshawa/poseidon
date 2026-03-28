@@ -303,11 +303,10 @@ async function main() {
     console.log(`<system-reminder>\n${parts.join("\n\n")}\n</system-reminder>`);
     // Standardized single-line log
     if (detected) {
-      const masked = detected.key.slice(0, 4) + "..." + detected.key.slice(-4);
       console.error(`\u2699 PrePrompt \u2502 \ud83d\udd10 Secret captured: ${detected.service}/${detected.field} \u2502 registry updated`);
     } else {
       const rulesInjected = parts.filter(p => p.startsWith("Past learnings")).length > 0 ? parts.filter(p => p.startsWith("Past learnings")).length : 0;
-      console.error(`\u2699 PrePrompt \u2502 ${result.mode} (score: ${result.score}, signals: ${result.signals.join(", ")}) \u2502 project: ${project?.id || "_general"} \u2502 ${rulesInjected} rules injected`);
+      console.error(`\u2699 PrePrompt \u2502 ${result.mode} (score: ${result.score}, signals: ${result.signals.join(", ")}) \u2502 project: ${project?.id || "main"} \u2502 ${rulesInjected} rules injected`);
     }
   } catch (err) {
     console.error(`\u2699 PrePrompt \u2502 error: ${err}`);

@@ -13,3 +13,7 @@
 ## Recent Changes
 
 *What changed in the last session.*
+
+## Domain
+
+*What domain/industry this project operates in. Updated when the project scope becomes clear.*

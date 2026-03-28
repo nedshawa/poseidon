@@ -147,7 +147,7 @@ async function main() {
     }
 
     if (!userMessage) {
-      console.error("[post-response] No user message found, skipping");
+      console.error(`\u2699 Stop \u2502 no user message found`);
       return;
     }
 
@@ -164,11 +164,10 @@ async function main() {
         session_id: sessionId,
       };
       appendSignal(signal);
-      console.error(`[post-response] Explicit rating: ${rating}`);
-
       if (rating <= 3) {
         createFailureDump(userMessage, [`Explicit low rating: ${rating}`], sessionId);
       }
+      console.error(`\u2699 Stop \u2502 rating: ${rating}/10 captured`);
       return;
     }
 
@@ -184,13 +183,16 @@ async function main() {
       };
       appendSignal(signal);
       createFailureDump(userMessage, matched, sessionId);
-      console.error(`[post-response] Frustration detected: ${matched.join(", ")}`);
+      console.error(`\u2699 Stop \u2502 \ud83d\udd10 frustration detected \u2502 failure dump created`);
+      return;
     }
 
     // Update active project context
     const assistantMsg = input.last_assistant_message || "";
+    let contextUpdated = false;
     if (assistantMsg) {
       updateProjectContext(summarize(assistantMsg));
+      contextUpdated = true;
 
       // Track thinking skill invocations
       try {
@@ -207,8 +209,9 @@ async function main() {
         }
       } catch {}
     }
+    console.error(`\u2699 Stop \u2502 sentiment: neutral${contextUpdated ? " \u2502 project CONTEXT.md updated" : ""}`);
   } catch (err) {
-    console.error(`[post-response] Error (non-blocking): ${err}`);
+    console.error(`\u2699 Stop \u2502 error: ${err}`);
   }
 }
 
