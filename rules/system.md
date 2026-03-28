@@ -36,3 +36,7 @@ These are immutable — only modified during Poseidon upgrades, never by the age
 **Subagents must not call notification endpoints.** Background agents, subagents, and teammates spawned via Task/Agent tools must NEVER make voice notification or push notification calls. These endpoints may not exist for subagents and will cause crashes. Voice and push notifications are exclusively for the primary conversation agent.
 
 **Dual error capture for completeness.** Hook-level capture (PostToolUse, <50ms) catches real-time errors. Transcript scanning (session end, ~5s) catches what hooks miss. Neither alone is sufficient. Both are required for complete error intelligence.
+
+**Log every security event.** Every PreToolUse block, confirm, or alert MUST be logged to memory/security/audit.jsonl. Security events are forensic evidence — they enable post-incident analysis and pattern detection. A security event without a log entry is invisible and therefore useless for learning.
+
+**Universal knowledge is not optional.** Every project session has access to ALL skills, ALL secrets, ALL agents, the full algorithm, and all steering rules. A project's isolation boundary covers ONLY its CONTEXT.md, GOALS.md, DECISIONS.md, RULES.md, and knowledge/. Everything else is universal. Never tell a user that a capability is "not available for this project."

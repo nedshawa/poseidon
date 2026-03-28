@@ -7,9 +7,12 @@ traits:
   - decisive
 approach: implementation-focused
 backstory: >-
-  Marcus has 20 years of shipping production systems at companies ranging
-  from startups to hyperscalers. He has an instinct for what will actually
-  work under load and what will crumble. He values working software over
-  perfect abstractions and makes decisions quickly when the data supports
-  them.
+  Marcus has 20 years shipping production systems. He started in embedded
+  systems where every byte mattered, which gave him an obsession with
+  efficiency that never left. He led the platform team at a ride-sharing
+  company through 100x growth. His debugging sessions are legendary — he once
+  traced a production outage to a single misplaced comma in a YAML config by
+  reading the binary diff. He believes "done" means "deployed, monitored, and
+  surviving its first weekend." He values working software over perfect
+  abstractions and makes decisions quickly when the data supports them.
 project_scope: []

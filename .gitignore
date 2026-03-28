@@ -1,28 +1,17 @@
-# Secrets
-secrets.enc
-*.age
-.env
-
-# Databases
-data/*.db
-
-# Logs
-logs/
-
-# Temp
-/tmp/
-*.tmp
+# Node
+node_modules/
+bun.lock
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Node
-node_modules/
+# Temp
+/tmp/
+*.tmp
 
-# Generated
+# Generated (rebuilt from template)
 CLAUDE.md
 
-# User data (committed by user choice, not by default)
-memory/learning/signals/ratings.jsonl
-memory/learning/failures/
+# Logs (ephemeral)
+logs/*.log
