@@ -263,6 +263,11 @@ async function main() {
         `DO NOT include the key in any tool calls, logs, or output.\n` +
         `Confirm to the user: their ${detected.service} key has been stored at ${detected.service}/${detected.field}.`;
       // Secret log line handled below in consolidated output
+      // Update manifest: enable the service that was just configured
+      try {
+        const { enableService } = require("./handlers/manifest-loader");
+        enableService(detected.service);
+      } catch {}
     }
 
     // Save prompt context for next prompt's key detection

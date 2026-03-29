@@ -1,0 +1,97 @@
+version: "1.0"
+updated: "2026-03-29T02:26:09.045Z"
+secrets:
+  backend: age
+  config:
+    age:
+      key_path: ~/.config/poseidon/age-key.txt
+      store_path: secrets.enc
+services:
+  claude_websearch:
+    enabled: true
+    category: research
+    agent_type: ClaudeResearcher
+    purpose: Scholarly synthesis (free, no API key needed)
+    requires_key: false
+  perplexity:
+    enabled: false
+    category: research
+    agent_type: PerplexityResearcher
+    purpose: Real-time web research
+    requires_key: true
+  gemini:
+    enabled: false
+    category: research
+    agent_type: GeminiResearcher
+    purpose: Technical docs, Google ecosystem
+    requires_key: true
+  grok:
+    enabled: false
+    category: research
+    agent_type: GrokResearcher
+    purpose: Contrarian, unfiltered perspectives
+    requires_key: true
+  brave:
+    enabled: false
+    category: research
+    purpose: Privacy-focused web search
+    requires_key: true
+  openai:
+    enabled: false
+    category: ai_models
+    purpose: Inference, embeddings
+    requires_key: true
+  anthropic:
+    enabled: false
+    category: ai_models
+    purpose: Claude API (separate from Claude Code)
+    requires_key: true
+  elevenlabs:
+    enabled: false
+    category: voice
+    purpose: Text-to-speech
+    requires_key: true
+    endpoint: http://localhost:8888/notify
+  deepgram:
+    enabled: false
+    category: voice
+    purpose: Speech-to-text
+    requires_key: true
+  ntfy:
+    enabled: false
+    category: notifications
+    purpose: Push notifications
+    requires_key: true
+  discord:
+    enabled: false
+    category: notifications
+    purpose: Discord webhooks
+    requires_key: true
+  telegram:
+    enabled: false
+    category: notifications
+    purpose: Telegram bot
+    requires_key: true
+  fmp:
+    enabled: false
+    category: finance
+    purpose: Stock data, fundamentals
+    requires_key: true
+  stitch:
+    enabled: false
+    category: design
+    purpose: Google Stitch UI design SDK
+    requires_key: true
+  github:
+    enabled: true
+    category: infrastructure
+    purpose: Git operations
+    requires_key: false
+capabilities:
+  research_agents:
+    - claude_websearch
+  research_tier_max: quick
+  voice_enabled: false
+  notifications_enabled: false
+  finance_enabled: false
+  design_enabled: false

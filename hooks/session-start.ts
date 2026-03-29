@@ -264,6 +264,12 @@ async function main() {
         if (discoveryText) parts.push(discoveryText);
       } catch {}
     }
+    // 3d. Capability manifest (what services are enabled for this instance)
+    try {
+      const { formatManifestForInjection } = require("./handlers/manifest-loader");
+      const manifestText = formatManifestForInjection();
+      if (manifestText) parts.push(manifestText);
+    } catch {}
     // 4. Steering rules
     const steering = loadSteeringRules();
     if (steering) parts.push(steering);

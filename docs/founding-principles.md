@@ -135,6 +135,14 @@ Skills are verbs (HOW to do things). Projects are nouns (WHAT we're working on).
 
 **Poseidon implementation:** `preferences/*.yaml` per project. Loaded by `preferences-loader.ts` at session start. Injected into system-reminder so skills adapt.
 
+## 21. Capability-Aware Execution (Poseidon-Only)
+
+Poseidon only uses what is enabled. The capability manifest (`poseidon-manifest.yaml`) is the single source of truth for what this instance can do. If a service is not enabled in the manifest, it does not exist — no blind attempts, no silent failures, no wasted context.
+
+**Why this matters:** An AI that attempts a service without an API key wastes time, context tokens, and user trust. An AI that checks the manifest first knows exactly what it has and adapts its strategy accordingly. A Poseidon instance with only Claude WebSearch uses quick research mode. A Poseidon instance with Perplexity + Gemini + Claude uses standard mode. The manifest determines behavior, not assumptions.
+
+**Poseidon implementation:** `poseidon-manifest.yaml` at the root declares all services with `enabled: true/false`. `hooks/handlers/manifest-loader.ts` reads it. Session-start injects enabled capabilities into system-reminder. Pre-prompt updates it when new keys are captured. Secret backend (age/vault/1password/bitwarden) is configured here — only ONE is active.
+
 ---
 
-*These 20 principles are the constitutional foundation of Poseidon. All architectural decisions, skill designs, and system behaviors should trace back to one or more of these principles.*
+*These 21 principles are the constitutional foundation of Poseidon. All architectural decisions, skill designs, and system behaviors should trace back to one or more of these principles.*
