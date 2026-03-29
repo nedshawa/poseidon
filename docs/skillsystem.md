@@ -214,8 +214,29 @@ TypeScript automation scripts that provide programmatic capabilities:
 - **Skill invocation:** Full SKILL.md body loads
 - **Workflow execution:** Workflow file loads when routed
 
+### 3-Tier Skill Taxonomy (Founding Principle #18)
+
+Skills are categorized into 3 tiers with explicit matching:
+
+| Tier | Location | Loading Rule | Priority |
+|------|----------|-------------|----------|
+| **Universal** | `skills/` | Always loaded, every project | 50-95 |
+| **Product** | `skills/` | Only by universal dependency OR explicit project request | 55-80 |
+| **Project** | `memory/projects/{id}/skills/` | Only for that project | 100 |
+
+**Two matches only:**
+1. Universal match — skill IS universal, or required by a universal skill (`requires:` field)
+2. Project match — project lists skill in `META.yaml products: [name]`
+
+**No implicit matching.** No domain inference, no keyword guessing. Every loaded skill has a `match_reason`.
+
+### Skill Index
+`skills/skill-index.yaml` maps every skill to: tier, priority, requires (dependencies), description.
+Read by `hooks/handlers/skill-discovery.ts` at session start.
+
 ### Project Scoping
-Skills can be project-scoped — only available in specific project contexts.
+Projects request product skills via `META.yaml products: []`.
+Projects can create their own skills in `memory/projects/{id}/skills/`.
 
 ### Effectiveness Tracking
 Skill usage logged alongside other signals for learning system analysis.

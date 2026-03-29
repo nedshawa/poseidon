@@ -120,9 +120,23 @@ New projects inherit ALL of the above automatically.
 ### Project-Scoped (isolated per project)
 - `CONTEXT.md`, `GOALS.md`, `DECISIONS.md`, `RULES.md`, `knowledge/`
 - `preferences/` — YAML files customizing skill behavior for THIS project
+- `products: []` in META.yaml — explicit product skill requests
+- `skills/` — project-specific skills (highest priority)
+
+### Skill Discovery (Principle #18 — Explicit Matching Only)
+
+Skills load through EXACTLY two paths:
+1. **Universal match** — skill is universal OR a universal dependency (automatic, no config)
+2. **Project match** — product skill listed in META.yaml `products: [name]` (explicit request)
+
+**NEVER load a product skill implicitly.** No domain guessing, no keyword inference.
+The system-reminder shows loaded skills with match_reason — always know WHY a skill is there.
+
+To enable a product skill for a project: add it to `products: []` in META.yaml.
+Available products: telos, us-metrics, media, investigation, scraping, utilities, cli-builder.
 
 ### Skill Preferences
-Projects customize skills via `preferences/*.yaml`. If preferences exist, adapt behavior. If not, use defaults.
+Projects customize skill BEHAVIOR via `preferences/*.yaml`. Preferences adapt HOW a skill works, not WHETHER it loads. If preferences exist, adapt behavior. If not, use defaults.
 
 ## Project System
 

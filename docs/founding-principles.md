@@ -108,6 +108,19 @@ Every project is a fortress. Context, goals, decisions, rules — all scoped to 
 
 **Poseidon implementation:** memory/projects/{id}/ with strict isolation. Association priority: explicit flag > active project > cwd match > keyword match > recent continuation. Rule #11 in system.md: "Project context is sacred."
 
+## 18. Explicit Skill Matching (Poseidon-Only)
+
+Skills load through exactly two paths — universal match and project match. Never through implicit inference, domain guessing, or automatic association. You must always be able to answer "WHY is this skill loaded?" with one of two answers: "because it's universal or a universal dependency" or "because the project explicitly requested it."
+
+**The three tiers:**
+- **Universal** — always available, every project, no configuration. Plus any product skill that a universal skill depends on (loaded as a dependency).
+- **Product** — only loaded when a project explicitly lists it in `META.yaml products: [skill-name]`. Never loaded implicitly by domain or keyword matching.
+- **Project** — created by and for a specific project, lives in the project's own `skills/` directory. Highest priority (100) for that project.
+
+**Why explicit matters:** Implicit matching creates surprises — a skill activates that you didn't expect, consuming context and creating confusion. Explicit matching is predictable — every loaded skill has a `match_reason` you can trace. Predictability > convenience.
+
+**Poseidon implementation:** `skills/skill-index.yaml` maps every skill to tier, priority, and dependencies. `hooks/handlers/skill-discovery.ts` resolves the two matches. Session-start injects the discovery result into system-reminder so the AI knows exactly which skills are loaded and why.
+
 ---
 
 *These principles are the constitutional foundation of Poseidon. All architectural decisions, skill designs, and system behaviors should trace back to one or more of these principles.*
