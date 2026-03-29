@@ -508,3 +508,110 @@ sources:
     fallback: null
     used_by: [research, content-analysis]
     provides: [summarization, extraction, patterns]
+
+  # ═══ ADDITIONAL SOURCES (from Obsidian vault scan) ══════════
+
+  - id: sec_edgar
+    name: "SEC EDGAR"
+    domain: finance
+    type: api
+    cost: free
+    cost_note: "Free, public government data, no key needed"
+    requires_key: false
+    key_fields: []
+    key_patterns: []
+    docs_url: "https://www.sec.gov/developer"
+    manifest_service: null
+    fallback: null
+    used_by: [equity-research, backtesting]
+    provides: [sec-filings, company-tickers, 10-K, 10-Q, insider-trades]
+
+  - id: cloudflare
+    name: "Cloudflare"
+    domain: infrastructure
+    type: api
+    cost: freemium
+    cost_note: "Free tier: Workers 100K req/day, R2 10GB. Paid: $5/mo+"
+    requires_key: true
+    key_fields: [api_token]
+    key_patterns: []
+    docs_url: "https://developers.cloudflare.com/"
+    manifest_service: cloudflare
+    fallback: null
+    used_by: [utilities]
+    provides: [workers, r2-storage, kv-store, d1-database, dns, pages]
+
+  - id: cleanvoice
+    name: "CleanVoice AI"
+    domain: voice
+    type: api
+    cost: paid
+    cost_note: "Per-minute pricing (~$0.10/min)"
+    requires_key: true
+    key_fields: [api_key]
+    key_patterns: []
+    docs_url: "https://cleanvoice.ai/docs"
+    manifest_service: cleanvoice
+    fallback: null
+    used_by: [content-analysis, utilities]
+    provides: [audio-cleaning, filler-removal, silence-removal]
+
+  - id: hunter_io
+    name: "Hunter.io"
+    domain: intelligence
+    type: api
+    cost: freemium
+    cost_note: "Free: 25 searches/mo. Paid: from $49/mo"
+    requires_key: true
+    key_fields: [api_key]
+    key_patterns: []
+    docs_url: "https://hunter.io/api-documentation"
+    manifest_service: hunter_io
+    fallback: null
+    used_by: [investigation]
+    provides: [email-finder, domain-search, email-verification, osint]
+
+  - id: censys
+    name: "Censys"
+    domain: security
+    type: api
+    cost: freemium
+    cost_note: "Free: 250 queries/mo. Paid: from $25/mo"
+    requires_key: true
+    key_fields: [api_id, api_secret]
+    key_patterns: []
+    docs_url: "https://search.censys.io/api"
+    manifest_service: censys
+    fallback: shodan
+    used_by: [security]
+    provides: [internet-scanning, certificate-search, host-discovery]
+
+  - id: haveibeenpwned
+    name: "Have I Been Pwned"
+    domain: security
+    type: api
+    cost: freemium
+    cost_note: "Free for personal. Paid: $3.50/mo for API"
+    requires_key: true
+    key_fields: [api_key]
+    key_patterns: []
+    docs_url: "https://haveibeenpwned.com/API/v3"
+    manifest_service: haveibeenpwned
+    fallback: null
+    used_by: [security, investigation]
+    provides: [breach-checking, paste-search, credential-exposure]
+
+  - id: coingecko
+    name: "CoinGecko"
+    domain: finance
+    type: api
+    cost: freemium
+    cost_note: "Free: 10-30 req/min. Pro: $129/mo"
+    requires_key: false
+    key_fields: [api_key]
+    key_patterns: ["CG-"]
+    docs_url: "https://docs.coingecko.com/"
+    manifest_service: coingecko
+    fallback: null
+    used_by: [equity-research]
+    provides: [crypto-prices, crypto-market-data, defi-data, nft-data]
