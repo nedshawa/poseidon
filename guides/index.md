@@ -18,6 +18,7 @@ Operational knowledge — HOW to do things in Poseidon.
 | [Research Workflow](operations/research-workflow.md) | How to conduct effective multi-agent research |
 | [Algorithm Execution](operations/algorithm-execution.md) | How to run the 7-phase Algorithm correctly |
 | [Agent Deployment](operations/agent-deployment.md) | How to compose, deploy, and coordinate agents |
+| [Versioning Workflow](operations/versioning-workflow.md) | How to manage versions, changelogs, and doc freshness |
 
 ## Security (Best Practices)
 
