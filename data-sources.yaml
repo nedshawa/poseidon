@@ -1,106 +1,24 @@
-# Poseidon Data Source Index
+# Poseidon Data Source Index v2.0 — SINGLE SOURCE OF TRUTH
 #
-# Maps every external data source to its domain, quality tier, access method,
-# manifest dependency, and fallback chain.
+# This file governs ALL external service knowledge:
+#   - Setup wizard reads: name, key_fields, docs_url, cost, cost_note
+#   - Manifest reads: enabled/disabled per source
+#   - Router reads: domain, cost, fallback, provides
+#   - Key detection reads: key_patterns for auto-identification
+#   - Skills read: used_by for dependency checking
 #
-# Routing logic: for a domain request, find all sources for that domain,
-# sort by quality (premium > standard > free), check manifest for enabled status,
-# use the highest-quality enabled source. If none enabled → use fallback chain.
+# Replaces: security/services.yaml (DELETED — merged here)
 #
-# Quality tiers:
-#   premium  — paid API, high-quality, structured data, reliable
-#   standard — free API with limits, good quality, may rate-limit
-#   free     — no key needed, scraping-based or built-in, lower reliability
+# cost tiers:
+#   paid     — subscription or per-token/request cost to the user
+#   freemium — free tier available, paid for higher limits
+#   free     — no cost, no key needed (always available)
+#
+# Fallback: paid → freemium → free within same domain (auto-computed if not specified)
 
-version: "1.0"
+version: "2.0"
 
 sources:
-
-  # ═══ FINANCE ════════════════════════════════════════════════
-
-  - id: fmp
-    name: "Financial Modeling Prep"
-    domain: finance
-    type: api
-    quality: premium
-    requires_key: true
-    manifest_service: fmp
-    fallback: yahoo_finance
-    url: "https://financialmodelingprep.com/api/v3/"
-    used_by: [equity-research, technical-analysis, daily-screener, watchlist]
-    provides: [stock-quotes, fundamentals, earnings, options, institutional, analyst-ratings, screener]
-
-  - id: yahoo_finance
-    name: "Yahoo Finance"
-    domain: finance
-    type: scraping
-    quality: free
-    requires_key: false
-    manifest_service: null
-    fallback: null
-    url: "https://finance.yahoo.com/"
-    used_by: [equity-research, technical-analysis]
-    provides: [stock-quotes, basic-fundamentals, historical-prices]
-
-  - id: fred
-    name: "Federal Reserve Economic Data"
-    domain: finance
-    type: api
-    quality: standard
-    requires_key: true
-    manifest_service: fred
-    fallback: fred_web
-    url: "https://api.stlouisfed.org/fred/"
-    used_by: [us-metrics]
-    provides: [gdp, inflation, unemployment, interest-rates, economic-indicators]
-
-  - id: fred_web
-    name: "FRED Website (scraping)"
-    domain: finance
-    type: scraping
-    quality: free
-    requires_key: false
-    manifest_service: null
-    fallback: null
-    url: "https://fred.stlouisfed.org/"
-    used_by: [us-metrics]
-    provides: [gdp, inflation, unemployment]
-
-  - id: bls
-    name: "Bureau of Labor Statistics"
-    domain: finance
-    type: api
-    quality: standard
-    requires_key: false
-    manifest_service: null
-    fallback: null
-    url: "https://api.bls.gov/publicAPI/v2/"
-    used_by: [us-metrics]
-    provides: [employment, cpi, ppi, labor-statistics]
-
-  - id: treasury
-    name: "US Treasury"
-    domain: finance
-    type: api
-    quality: standard
-    requires_key: false
-    manifest_service: null
-    fallback: null
-    url: "https://api.fiscaldata.treasury.gov/services/api/"
-    used_by: [us-metrics]
-    provides: [yields, debt, fiscal-data]
-
-  - id: eia
-    name: "Energy Information Administration"
-    domain: finance
-    type: api
-    quality: standard
-    requires_key: true
-    manifest_service: eia
-    fallback: null
-    url: "https://api.eia.gov/v2/"
-    used_by: [us-metrics]
-    provides: [oil-prices, gas-prices, energy-data]
 
   # ═══ RESEARCH ═══════════════════════════════════════════════
 
@@ -108,11 +26,14 @@ sources:
     name: "Perplexity"
     domain: research
     type: api
-    quality: premium
+    cost: paid
+    cost_note: "$20/mo or token-based via API"
     requires_key: true
+    key_fields: [api_key]
+    key_patterns: ["pplx-"]
+    docs_url: "https://www.perplexity.ai/settings/api"
     manifest_service: perplexity
     fallback: claude_websearch
-    url: "https://api.perplexity.ai/"
     used_by: [research]
     provides: [web-search, real-time-data, cited-answers]
 
@@ -120,11 +41,14 @@ sources:
     name: "Google Gemini"
     domain: research
     type: api
-    quality: premium
+    cost: paid
+    cost_note: "Token-based, free tier: 15 req/min"
     requires_key: true
+    key_fields: [api_key]
+    key_patterns: ["AIza"]
+    docs_url: "https://aistudio.google.com/app/apikey"
     manifest_service: gemini
     fallback: claude_websearch
-    url: "https://generativelanguage.googleapis.com/"
     used_by: [research]
     provides: [web-search, technical-docs, google-ecosystem, multimodal]
 
@@ -132,37 +56,202 @@ sources:
     name: "xAI Grok"
     domain: research
     type: api
-    quality: standard
+    cost: paid
+    cost_note: "Token-based via xAI API"
     requires_key: true
+    key_fields: [api_key]
+    key_patterns: ["xai-"]
+    docs_url: "https://console.x.ai/"
     manifest_service: grok
     fallback: claude_websearch
-    url: "https://api.x.ai/"
     used_by: [research]
     provides: [web-search, contrarian-analysis, real-time]
-
-  - id: claude_websearch
-    name: "Claude WebSearch"
-    domain: research
-    type: built-in
-    quality: free
-    requires_key: false
-    manifest_service: claude_websearch
-    fallback: null
-    url: null
-    used_by: [research]
-    provides: [web-search, scholarly-synthesis, analysis]
 
   - id: brave
     name: "Brave Search"
     domain: research
     type: api
-    quality: standard
+    cost: freemium
+    cost_note: "Free: 2,000 queries/mo. Paid: from $5/mo"
     requires_key: true
+    key_fields: [api_key]
+    key_patterns: ["BSA"]
+    docs_url: "https://brave.com/search/api/"
     manifest_service: brave
     fallback: claude_websearch
-    url: "https://api.search.brave.com/"
     used_by: [research]
     provides: [web-search, privacy-focused]
+
+  - id: claude_websearch
+    name: "Claude WebSearch"
+    domain: research
+    type: built-in
+    cost: free
+    cost_note: "Built into Claude Code, no cost"
+    requires_key: false
+    key_fields: []
+    key_patterns: []
+    docs_url: null
+    manifest_service: claude_websearch
+    fallback: null
+    used_by: [research]
+    provides: [web-search, scholarly-synthesis, analysis]
+
+  # ═══ AI MODELS ══════════════════════════════════════════════
+
+  - id: openai
+    name: "OpenAI"
+    domain: ai_models
+    type: api
+    cost: paid
+    cost_note: "Token-based (GPT-4o: $5/$15 per 1M tokens)"
+    requires_key: true
+    key_fields: [api_key]
+    key_patterns: ["sk-proj-", "sk-svcacct-"]
+    docs_url: "https://platform.openai.com/api-keys"
+    manifest_service: openai
+    fallback: null
+    used_by: [media]
+    provides: [inference, embeddings, image-generation]
+
+  - id: anthropic
+    name: "Anthropic"
+    domain: ai_models
+    type: api
+    cost: paid
+    cost_note: "Token-based (Claude API, separate from Claude Code)"
+    requires_key: true
+    key_fields: [api_key]
+    key_patterns: ["sk-ant-"]
+    docs_url: "https://console.anthropic.com/settings/keys"
+    manifest_service: anthropic
+    fallback: null
+    used_by: []
+    provides: [inference, extended-thinking]
+
+  # ═══ FINANCE ════════════════════════════════════════════════
+
+  - id: fmp
+    name: "Financial Modeling Prep"
+    domain: finance
+    type: api
+    cost: paid
+    cost_note: "$29/mo subscription"
+    requires_key: true
+    key_fields: [api_key]
+    key_patterns: []
+    docs_url: "https://financialmodelingprep.com/developer/docs/"
+    manifest_service: fmp
+    fallback: alpha_vantage
+    used_by: [equity-research, technical-analysis, daily-screener, watchlist]
+    provides: [stock-quotes, fundamentals, earnings, options, institutional, analyst-ratings, screener]
+
+  - id: alpha_vantage
+    name: "Alpha Vantage"
+    domain: finance
+    type: api
+    cost: freemium
+    cost_note: "Free: 25 req/day. Premium: $49.99/mo"
+    requires_key: true
+    key_fields: [api_key]
+    key_patterns: []
+    docs_url: "https://www.alphavantage.co/documentation/"
+    manifest_service: alpha_vantage
+    fallback: yahoo_finance
+    used_by: [equity-research, technical-analysis]
+    provides: [stock-quotes, technical-indicators, forex, crypto]
+
+  - id: yahoo_finance
+    name: "Yahoo Finance"
+    domain: finance
+    type: scraping
+    cost: free
+    cost_note: "Free, scraping-based, no API key"
+    requires_key: false
+    key_fields: []
+    key_patterns: []
+    docs_url: "https://finance.yahoo.com/"
+    manifest_service: null
+    fallback: null
+    used_by: [equity-research, technical-analysis]
+    provides: [stock-quotes, basic-fundamentals, historical-prices]
+
+  # ═══ ECONOMICS ══════════════════════════════════════════════
+
+  - id: fred
+    name: "FRED (Federal Reserve)"
+    domain: economics
+    type: api
+    cost: freemium
+    cost_note: "Free: 120 req/min (requires registration)"
+    requires_key: true
+    key_fields: [api_key]
+    key_patterns: []
+    docs_url: "https://fred.stlouisfed.org/docs/api/api_key.html"
+    manifest_service: fred
+    fallback: fred_web
+    used_by: [us-metrics]
+    provides: [gdp, inflation, unemployment, interest-rates, economic-indicators]
+
+  - id: fred_web
+    name: "FRED Website"
+    domain: economics
+    type: scraping
+    cost: free
+    cost_note: "Free, scraping-based"
+    requires_key: false
+    key_fields: []
+    key_patterns: []
+    docs_url: "https://fred.stlouisfed.org/"
+    manifest_service: null
+    fallback: null
+    used_by: [us-metrics]
+    provides: [gdp, inflation, unemployment]
+
+  - id: bls
+    name: "Bureau of Labor Statistics"
+    domain: economics
+    type: api
+    cost: free
+    cost_note: "Free, no key needed"
+    requires_key: false
+    key_fields: []
+    key_patterns: []
+    docs_url: "https://api.bls.gov/publicAPI/v2/"
+    manifest_service: null
+    fallback: null
+    used_by: [us-metrics]
+    provides: [employment, cpi, ppi, labor-statistics]
+
+  - id: treasury
+    name: "US Treasury"
+    domain: economics
+    type: api
+    cost: free
+    cost_note: "Free, no key needed"
+    requires_key: false
+    key_fields: []
+    key_patterns: []
+    docs_url: "https://api.fiscaldata.treasury.gov/"
+    manifest_service: null
+    fallback: null
+    used_by: [us-metrics]
+    provides: [yields, debt, fiscal-data]
+
+  - id: eia
+    name: "Energy Information Administration"
+    domain: economics
+    type: api
+    cost: freemium
+    cost_note: "Free with registration"
+    requires_key: true
+    key_fields: [api_key]
+    key_patterns: []
+    docs_url: "https://www.eia.gov/opendata/"
+    manifest_service: eia
+    fallback: null
+    used_by: [us-metrics]
+    provides: [oil-prices, gas-prices, energy-data]
 
   # ═══ SCRAPING ═══════════════════════════════════════════════
 
@@ -170,23 +259,29 @@ sources:
     name: "Apify"
     domain: scraping
     type: api
-    quality: premium
+    cost: paid
+    cost_note: "$49/mo+ (credit-based, 18 platform actors)"
     requires_key: true
+    key_fields: [api_key]
+    key_patterns: ["apify_api_"]
+    docs_url: "https://docs.apify.com/"
     manifest_service: apify
     fallback: bright_data
-    url: "https://api.apify.com/v2/"
     used_by: [scraping]
-    provides: [social-media, ecommerce, web-scraping, 18-platform-actors]
+    provides: [social-media, ecommerce, web-scraping, platform-actors]
 
   - id: bright_data
     name: "Bright Data"
     domain: scraping
     type: api
-    quality: premium
+    cost: paid
+    cost_note: "Pay-per-use proxy network"
     requires_key: true
+    key_fields: [api_key]
+    key_patterns: []
+    docs_url: "https://docs.brightdata.com/"
     manifest_service: bright_data
     fallback: null
-    url: "https://api.brightdata.com/"
     used_by: [scraping]
     provides: [proxy, captcha-solving, residential-ip, web-scraping]
 
@@ -196,11 +291,14 @@ sources:
     name: "Replicate"
     domain: media
     type: api
-    quality: premium
+    cost: paid
+    cost_note: "Per-prediction (~$0.003/image for Flux)"
     requires_key: true
+    key_fields: [api_key]
+    key_patterns: ["r8_"]
+    docs_url: "https://replicate.com/docs"
     manifest_service: replicate
     fallback: openai_images
-    url: "https://api.replicate.com/v1/"
     used_by: [media]
     provides: [image-generation, flux, stable-diffusion]
 
@@ -208,11 +306,14 @@ sources:
     name: "OpenAI GPT-Image"
     domain: media
     type: api
-    quality: premium
+    cost: paid
+    cost_note: "$0.04-0.12/image (bundled with OpenAI API)"
     requires_key: true
+    key_fields: [api_key]
+    key_patterns: ["sk-proj-"]
+    docs_url: "https://platform.openai.com/docs/guides/images"
     manifest_service: openai
     fallback: null
-    url: "https://api.openai.com/v1/images/"
     used_by: [media]
     provides: [image-generation, gpt-image-1]
 
@@ -222,11 +323,14 @@ sources:
     name: "ElevenLabs"
     domain: voice
     type: api
-    quality: premium
+    cost: paid
+    cost_note: "$5/mo starter (10K chars), $22/mo creator"
     requires_key: true
+    key_fields: [api_key]
+    key_patterns: ["xi-"]
+    docs_url: "https://elevenlabs.io/docs"
     manifest_service: elevenlabs
     fallback: null
-    url: "http://localhost:8888/notify"
     used_by: [voice-completion]
     provides: [text-to-speech, voice-cloning]
 
@@ -234,11 +338,14 @@ sources:
     name: "Deepgram"
     domain: voice
     type: api
-    quality: premium
+    cost: paid
+    cost_note: "$0.0059/min (pay-as-you-go)"
     requires_key: true
+    key_fields: [api_key]
+    key_patterns: []
+    docs_url: "https://developers.deepgram.com/"
     manifest_service: deepgram
     fallback: null
-    url: "https://api.deepgram.com/"
     used_by: [content-analysis]
     provides: [speech-to-text, transcription]
 
@@ -248,11 +355,14 @@ sources:
     name: "Shodan"
     domain: security
     type: api
-    quality: premium
+    cost: paid
+    cost_note: "$59/mo membership"
     requires_key: true
+    key_fields: [api_key]
+    key_patterns: []
+    docs_url: "https://developer.shodan.io/"
     manifest_service: shodan
     fallback: null
-    url: "https://api.shodan.io/"
     used_by: [security]
     provides: [port-scanning, device-search, vulnerability-detection]
 
@@ -260,13 +370,33 @@ sources:
     name: "IPinfo"
     domain: security
     type: api
-    quality: standard
+    cost: freemium
+    cost_note: "Free: 50K req/mo. Paid: from $99/mo"
     requires_key: true
+    key_fields: [api_key]
+    key_patterns: []
+    docs_url: "https://ipinfo.io/developers"
     manifest_service: ipinfo
     fallback: null
-    url: "https://ipinfo.io/"
     used_by: [security]
     provides: [ip-geolocation, asn-lookup, hosting-detection]
+
+  # ═══ DESIGN ═════════════════════════════════════════════════
+
+  - id: stitch
+    name: "Google Stitch"
+    domain: design
+    type: api
+    cost: paid
+    cost_note: "Part of Google Cloud"
+    requires_key: true
+    key_fields: [api_key]
+    key_patterns: ["AIza"]
+    docs_url: "https://stitch.google.com/"
+    manifest_service: stitch
+    fallback: null
+    used_by: [media]
+    provides: [ui-design, design-system, prototyping]
 
   # ═══ NOTIFICATIONS ══════════════════════════════════════════
 
@@ -274,13 +404,46 @@ sources:
     name: "ntfy"
     domain: notifications
     type: api
-    quality: free
+    cost: free
+    cost_note: "Free (self-hosted or ntfy.sh)"
     requires_key: true
+    key_fields: [topic, token]
+    key_patterns: []
+    docs_url: "https://ntfy.sh/"
     manifest_service: ntfy
     fallback: null
-    url: "https://ntfy.sh/"
     used_by: [notifications]
     provides: [push-notifications]
+
+  - id: discord
+    name: "Discord"
+    domain: notifications
+    type: api
+    cost: free
+    cost_note: "Free (webhook-based)"
+    requires_key: true
+    key_fields: [webhook_url]
+    key_patterns: ["https://discord.com/api/webhooks/"]
+    docs_url: "https://discord.com/developers/docs"
+    manifest_service: discord
+    fallback: null
+    used_by: [notifications]
+    provides: [discord-notifications]
+
+  - id: telegram
+    name: "Telegram"
+    domain: notifications
+    type: api
+    cost: free
+    cost_note: "Free (bot API)"
+    requires_key: true
+    key_fields: [bot_token, chat_id]
+    key_patterns: []
+    docs_url: "https://core.telegram.org/bots/api"
+    manifest_service: telegram
+    fallback: null
+    used_by: [telegram-bot]
+    provides: [telegram-messages, mobile-access]
 
   # ═══ INFRASTRUCTURE ═════════════════════════════════════════
 
@@ -288,25 +451,31 @@ sources:
     name: "GitHub"
     domain: infrastructure
     type: api
-    quality: premium
+    cost: free
+    cost_note: "Free for public repos"
     requires_key: false
+    key_fields: [pat]
+    key_patterns: ["ghp_", "github_pat_"]
+    docs_url: "https://github.com/settings/tokens"
     manifest_service: github
     fallback: null
-    url: "https://api.github.com/"
     used_by: [commit, deploy]
-    provides: [git-operations, pr-management, issue-tracking]
+    provides: [git-operations, pr-management]
 
   - id: google_calendar
     name: "Google Calendar"
     domain: productivity
     type: api
-    quality: premium
+    cost: free
+    cost_note: "Free with Google account (OAuth2)"
     requires_key: true
+    key_fields: [client_id, client_secret]
+    key_patterns: []
+    docs_url: "https://developers.google.com/calendar"
     manifest_service: google_calendar
     fallback: null
-    url: "https://www.googleapis.com/calendar/"
     used_by: [calendar, time-utilization]
-    provides: [calendar-events, scheduling, availability]
+    provides: [calendar-events, scheduling]
 
   # ═══ CONTENT ════════════════════════════════════════════════
 
@@ -314,22 +483,28 @@ sources:
     name: "YouTube"
     domain: content
     type: scraping
-    quality: free
+    cost: free
+    cost_note: "Free (fabric -y URL)"
     requires_key: false
+    key_fields: []
+    key_patterns: []
+    docs_url: null
     manifest_service: null
     fallback: null
-    url: "https://youtube.com/"
     used_by: [content-analysis, research]
     provides: [video-transcripts, metadata]
 
   - id: fabric
-    name: "Fabric (local)"
+    name: "Fabric"
     domain: content
     type: local
-    quality: free
+    cost: free
+    cost_note: "Local CLI, 242+ patterns, no cost"
     requires_key: false
+    key_fields: []
+    key_patterns: []
+    docs_url: "https://github.com/danielmiessler/fabric"
     manifest_service: null
     fallback: null
-    url: null
     used_by: [research, content-analysis]
-    provides: [242-patterns, summarization, extraction]
+    provides: [summarization, extraction, patterns]

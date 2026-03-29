@@ -147,11 +147,13 @@ Poseidon only uses what is enabled. The capability manifest (`poseidon-manifest.
 
 ## 22. Data Source Awareness (Poseidon-Only)
 
-Poseidon knows every external data source — its domain, quality tier, access method, and fallback chain. When data is needed, Poseidon routes to the highest-quality ENABLED source. If premium is unavailable, it falls back to standard, then free. It never blind-attempts a source without checking the manifest.
+Poseidon knows every external data source — its domain, cost tier, access method, and fallback chain. When data is needed, Poseidon routes to the highest-quality ENABLED source. If paid is unavailable, it falls back to freemium, then free. It never blind-attempts a source without checking the manifest.
 
-**The fallback principle:** Premium (paid API, structured data) > Standard (free API, rate-limited) > Free (scraping, built-in). The fallback chain means Poseidon ALWAYS has a path to data — even if every paid service is disabled, free alternatives exist for critical domains (Yahoo Finance for stocks, Claude WebSearch for research, FRED website for economics).
+**Cost-aware routing:** Paid (subscription or per-token cost) > Freemium (free tier with limits) > Free (no cost, no key). The user always sees the cost: "💰 FMP ($29/mo)" vs "🆓 Yahoo Finance (free)". The fallback chain means Poseidon ALWAYS has a path to data — even if every paid service is disabled.
 
-**Poseidon implementation:** `data-sources.yaml` indexes every external source with domain, quality, manifest dependency, fallback chain, and which skills use it. `hooks/handlers/data-source-router.ts` resolves the best available source per domain. Session-start injects available data sources into system-reminder.
+**Auto-indexing:** When a new API key is detected, `source-auto-indexer.ts` checks key_patterns in data-sources.yaml. Known patterns → auto-identify and enable. Unknown patterns → ask the user 5 questions (name, domain, cost, provides, docs URL) → auto-generate the index entry with fallback chain computed from domain + cost tier.
+
+**Poseidon implementation:** `data-sources.yaml` v2.0 is the SINGLE SOURCE OF TRUTH for all external services (replaces services.yaml). Each source carries: domain, cost, cost_note, key_patterns, key_fields, docs_url, manifest_service, fallback, used_by, provides. Setup wizard reads from this file. Pre-prompt auto-indexer reads from this file. Router reads from this file. One file, zero drift.
 
 ---
 

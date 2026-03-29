@@ -106,10 +106,16 @@ function loadDataSources(): DataSource[] {
 
 // ── Quality Ordering ─────────────────────────────────────────
 
-const QUALITY_ORDER: Record<string, number> = { premium: 3, standard: 2, free: 1 };
+// Cost tiers: paid (subscription/token cost) > freemium (free tier + paid) > free (no cost)
+const COST_ORDER: Record<string, number> = { paid: 3, freemium: 2, free: 1 };
 
+function costScore(cost: string): number {
+  return COST_ORDER[cost] || 0;
+}
+
+// Backward compatibility
 function qualityScore(q: string): number {
-  return QUALITY_ORDER[q] || 0;
+  return COST_ORDER[q] || 0;
 }
 
 // ── Public API ───────────────────────────────────────────────

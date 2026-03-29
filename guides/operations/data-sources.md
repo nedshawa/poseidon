@@ -70,6 +70,23 @@ data-sources.yaml: manifest_service: fmp
     → if false: follow fallback chain
 ```
 
+## Auto-Indexing
+
+When a new API key is pasted in conversation:
+
+1. **Key pattern match** — checked against `key_patterns` in data-sources.yaml
+   - If match → auto-identify service, enable in manifest, confirm to user
+   - Example: `pplx-abc123...` matches Perplexity → auto-enabled
+
+2. **No pattern match** — Poseidon asks 5 questions:
+   - Service name, domain, cost model, what it provides, docs URL
+   - Auto-generates entry in data-sources.yaml
+   - Determines fallback chain by domain + cost tier
+
+3. **Setup wizard** — reads from data-sources.yaml (not services.yaml)
+   - Shows 💰 for paid, 🔄 for freemium, 🆓 for free
+   - Displays cost_note so user knows exact pricing
+
 ## CLI
 
 ```bash
