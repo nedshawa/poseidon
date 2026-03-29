@@ -4,8 +4,8 @@ created: ""
 description: ""
 tags: []
 last_used: ""
+domain: general  # general, finance, security, tech, content, creative, personal, development, data
 
 # Research configuration (optional — defaults to global settings if not set)
 # research_default: standard  # quick | standard | extensive | deep
 # preferred_sources: []       # perplexity, claude, gemini, grok (empty = use all)
-# domain: ""                  # finance, security, tech, etc. (for source memory filtering)

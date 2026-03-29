@@ -255,6 +255,15 @@ async function main() {
         if (prefsText) parts.push(prefsText);
       } catch {}
     }
+    // 3c. Skill discovery (3-tier: universal + product + project)
+    if (active) {
+      try {
+        const { discoverSkills, formatSkillDiscovery } = require("./handlers/skill-discovery");
+        const discovery = discoverSkills(active);
+        const discoveryText = formatSkillDiscovery(discovery);
+        if (discoveryText) parts.push(discoveryText);
+      } catch {}
+    }
     // 4. Steering rules
     const steering = loadSteeringRules();
     if (steering) parts.push(steering);

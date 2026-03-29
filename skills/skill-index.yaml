@@ -1,0 +1,166 @@
+# Poseidon Skill Index
+# Maps every skill to its tier, domain tags, and relevance scoring.
+#
+# Tiers:
+#   universal   — always available, auto-activated for every project
+#   product     — available when project domain matches (finance, security, content, etc.)
+#   project     — created by and for a specific project (in memory/projects/{id}/skills/)
+#
+# This file is read by session-start to inject priority-ordered skill context.
+# Claude Code still scans the full skills/ directory — this index GUIDES selection,
+# it doesn't restrict access.
+
+version: "1.0"
+
+skills:
+  # ─── UNIVERSAL (always relevant, every project) ───
+  - name: research
+    tier: universal
+    domains: [all]
+    priority: 95
+    description: "Multi-agent research with 4 tiers"
+
+  - name: thinking
+    tier: universal
+    domains: [all]
+    priority: 95
+    description: "7 analytical and creative thinking modes"
+
+  - name: security
+    tier: universal
+    domains: [all]
+    priority: 90
+    description: "Security assessment, prompt injection testing"
+
+  - name: agents
+    tier: universal
+    domains: [all]
+    priority: 90
+    description: "Custom agent composition from traits"
+
+  - name: commit
+    tier: universal
+    domains: [all]
+    priority: 85
+    description: "Git commit workflows"
+
+  - name: debug
+    tier: universal
+    domains: [all]
+    priority: 85
+    description: "Debugging workflows"
+
+  - name: test
+    tier: universal
+    domains: [all]
+    priority: 85
+    description: "Test writing and execution"
+
+  - name: code-review
+    tier: universal
+    domains: [all]
+    priority: 80
+    description: "Code review workflows"
+
+  - name: refactor
+    tier: universal
+    domains: [all]
+    priority: 80
+    description: "Code refactoring patterns"
+
+  - name: deploy
+    tier: universal
+    domains: [all]
+    priority: 75
+    description: "Deployment workflows"
+
+  - name: skill-builder
+    tier: universal
+    domains: [all]
+    priority: 70
+    description: "Create, validate, canonicalize skills"
+
+  - name: project-init
+    tier: universal
+    domains: [all]
+    priority: 70
+    description: "Initialize new projects"
+
+  - name: evals
+    tier: universal
+    domains: [all]
+    priority: 65
+    description: "Evaluation and benchmarking"
+
+  - name: content-analysis
+    tier: universal
+    domains: [all]
+    priority: 65
+    description: "Content extraction and analysis"
+
+  - name: context-search
+    tier: universal
+    domains: [all]
+    priority: 60
+    description: "Search across Poseidon context"
+
+  - name: documents
+    tier: universal
+    domains: [all]
+    priority: 60
+    description: "Document processing (PDF, DOCX, etc.)"
+
+  - name: browser
+    tier: universal
+    domains: [all]
+    priority: 55
+    description: "Browser automation and screenshots"
+
+  - name: agi
+    tier: universal
+    domains: [all]
+    priority: 50
+    description: "AI system architecture audit and comparison"
+
+  # ─── PRODUCT-SPECIFIC (relevant when domain matches) ───
+  - name: telos
+    tier: product
+    domains: [personal, goals, planning]
+    priority: 80
+    description: "Life goals, projects, beliefs, wisdom"
+
+  - name: us-metrics
+    tier: product
+    domains: [finance, economics, markets]
+    priority: 75
+    description: "US economic indicators from FRED, BLS, etc."
+
+  - name: media
+    tier: product
+    domains: [content, creative, design, marketing]
+    priority: 75
+    description: "Visual content creation, diagrams, video"
+
+  - name: investigation
+    tier: product
+    domains: [security, osint, due-diligence, research]
+    priority: 70
+    description: "OSINT, company intel, people search"
+
+  - name: scraping
+    tier: product
+    domains: [data, content, research, marketing]
+    priority: 65
+    description: "Web scraping via Bright Data and Apify"
+
+  - name: utilities
+    tier: product
+    domains: [development, infrastructure, devops]
+    priority: 60
+    description: "CLI generation, Fabric, Cloudflare, parsing"
+
+  - name: cli-builder
+    tier: product
+    domains: [development, infrastructure, devops]
+    priority: 55
+    description: "Create CLI tools from APIs"
