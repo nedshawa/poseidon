@@ -69,27 +69,6 @@ Auto-generated catalogue of all workflows across skills.
 - `social-media-search` — `investigation/private-investigator/workflows/social-media-search.md`
 - `verify-identity` — `investigation/private-investigator/workflows/verify-identity.md`
 
-## media (19 workflows)
-
-- `annotated-screenshots` — `media/art/workflows/annotated-screenshots.md`
-- `aphorisms` — `media/art/workflows/aphorisms.md`
-- `comics` — `media/art/workflows/comics.md`
-- `comparisons` — `media/art/workflows/comparisons.md`
-- `create-pai-pack-icon` — `media/art/workflows/create-pai-pack-icon.md`
-- `d3-dashboards` — `media/art/workflows/d3-dashboards.md`
-- `essay` — `media/art/workflows/essay.md`
-- `frameworks` — `media/art/workflows/frameworks.md`
-- `maps` — `media/art/workflows/maps.md`
-- `mermaid` — `media/art/workflows/mermaid.md`
-- `recipe-cards` — `media/art/workflows/recipe-cards.md`
-- `remove-background` — `media/art/workflows/remove-background.md`
-- `stats` — `media/art/workflows/stats.md`
-- `taxonomies` — `media/art/workflows/taxonomies.md`
-- `technical-diagrams` — `media/art/workflows/technical-diagrams.md`
-- `timelines` — `media/art/workflows/timelines.md`
-- `visualize` — `media/art/workflows/visualize.md`
-- `you-tube-thumbnail-checklist` — `media/art/workflows/you-tube-thumbnail-checklist.md`
-- `content-to-animation` — `media/remotion/workflows/content-to-animation.md`
 
 ## research (17 workflows)
 

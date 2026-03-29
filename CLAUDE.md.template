@@ -133,7 +133,7 @@ Skills load through EXACTLY two paths:
 The system-reminder shows loaded skills with match_reason — always know WHY a skill is there.
 
 To enable a product skill for a project: add it to `products: []` in META.yaml.
-Available products: telos, us-metrics, media, investigation, scraping, utilities, cli-builder.
+Available products: telos, us-metrics, investigation, scraping, utilities, cli-builder.
 
 ### Skill Preferences
 Projects customize skill BEHAVIOR via `preferences/*.yaml`. Preferences adapt HOW a skill works, not WHETHER it loads. If preferences exist, adapt behavior. If not, use defaults.

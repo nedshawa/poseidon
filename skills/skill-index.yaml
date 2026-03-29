@@ -286,7 +286,7 @@ skills:
   - name: documents
     tier: universal
     priority: 60
-    requires: [media]
+    requires: []
     description: "Document processing — PDF, DOCX, XLSX, PPTX"
     category: content
     tags: [pdf, docx, xlsx, pptx, convert, extract, merge]
@@ -375,23 +375,6 @@ skills:
     workflows: 2
     has_tools: true
 
-  - name: media
-    tier: product
-    priority: 75
-    requires: []
-    description: "Visual content — diagrams, mermaid, comics, D3, Remotion video"
-    category: creative
-    tags: [art, diagrams, mermaid, comics, d3, remotion, video, thumbnails, infographics]
-    version: "1.0.0"
-    author: imported-from-pai
-    status: active
-    created: "2026-03-25"
-    updated: "2026-03-25"
-    requires_services: []
-    complexity: heavy
-    sub_skills: 2
-    workflows: 19
-    has_tools: true
 
   - name: investigation
     tier: product
