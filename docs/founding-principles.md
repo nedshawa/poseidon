@@ -76,7 +76,7 @@ The proper development pipeline. Each layer builds on the previous. Skip a layer
 
 Skills are the organizational unit for all domain expertise. Self-activating, self-contained, composable, evolvable.
 
-**Poseidon implementation:** 25 skills with 64 SKILL.md files, 207 workflows, 20 handlers. agentskills.io-compliant structure. Quality gate: 9-point checklist. Dynamic loading pattern. Canonicalization workflow. Full spec in docs/skillsystem.md.
+**Poseidon implementation:** 25+ skills with rich metadata (category, tags, version, author, status, service dependencies, complexity). 3-tier taxonomy (universal/product/project) with explicit matching (Principle #18). skill-index.yaml v3.0 provides 18-field identity per skill. Skill discovery uses metadata for category filtering and service-dependency checking.
 
 ## 13. Custom Memory System
 

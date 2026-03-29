@@ -26,6 +26,18 @@ export interface SkillEntry {
   requires: string[];
   description: string;
   match_reason: string; // WHY this skill was loaded
+  category?: string;
+  tags?: string[];
+  version?: string;
+  author?: string;
+  status?: string;
+  created?: string;
+  updated?: string;
+  requires_services?: string[];
+  complexity?: string;
+  sub_skills?: number;
+  workflows?: number;
+  has_tools?: boolean;
 }
 
 export interface SkillDiscoveryResult {
@@ -47,6 +59,18 @@ interface RawSkillEntry {
   priority: number;
   requires: string[];
   description: string;
+  category?: string;
+  tags?: string[];
+  version?: string;
+  author?: string;
+  status?: string;
+  created?: string;
+  updated?: string;
+  requires_services?: string[];
+  complexity?: string;
+  sub_skills?: number;
+  workflows?: number;
+  has_tools?: boolean;
 }
 
 function loadSkillIndex(): RawSkillEntry[] {
@@ -72,6 +96,32 @@ function loadSkillIndex(): RawSkillEntry[] {
         current.requires = val.replace(/[\[\]]/g, "").split(",").map(s => s.trim()).filter(Boolean);
       } else if (trimmed.startsWith("description:")) {
         current.description = trimmed.replace("description:", "").trim().replace(/^"|"$/g, "");
+      } else if (trimmed.startsWith("category:")) {
+        current.category = trimmed.replace("category:", "").trim();
+      } else if (trimmed.startsWith("tags:")) {
+        const val = trimmed.replace("tags:", "").trim();
+        current.tags = val.replace(/[\[\]]/g, "").split(",").map(s => s.trim()).filter(Boolean);
+      } else if (trimmed.startsWith("version:")) {
+        current.version = trimmed.replace("version:", "").trim();
+      } else if (trimmed.startsWith("author:")) {
+        current.author = trimmed.replace("author:", "").trim();
+      } else if (trimmed.startsWith("status:")) {
+        current.status = trimmed.replace("status:", "").trim();
+      } else if (trimmed.startsWith("created:")) {
+        current.created = trimmed.replace("created:", "").trim();
+      } else if (trimmed.startsWith("updated:")) {
+        current.updated = trimmed.replace("updated:", "").trim();
+      } else if (trimmed.startsWith("requires_services:")) {
+        const val = trimmed.replace("requires_services:", "").trim();
+        current.requires_services = val.replace(/[\[\]]/g, "").split(",").map(s => s.trim()).filter(Boolean);
+      } else if (trimmed.startsWith("complexity:")) {
+        current.complexity = trimmed.replace("complexity:", "").trim();
+      } else if (trimmed.startsWith("sub_skills:")) {
+        current.sub_skills = parseInt(trimmed.replace("sub_skills:", "").trim());
+      } else if (trimmed.startsWith("workflows:")) {
+        current.workflows = parseInt(trimmed.replace("workflows:", "").trim());
+      } else if (trimmed.startsWith("has_tools:")) {
+        current.has_tools = trimmed.replace("has_tools:", "").trim() === "true";
       }
     }
     if (current.name) entries.push(current as RawSkillEntry);
@@ -122,6 +172,38 @@ function loadProjectSkills(projectId: string): SkillEntry[] {
     }
   } catch {}
   return entries;
+}
+
+// ── Metadata Queries ────────────────────────────────────────
+
+/**
+ * Find skills by category or tags.
+ */
+export function findSkillsByCategory(category: string): SkillEntry[] {
+  const index = loadSkillIndex();
+  return index
+    .filter(s => s.category === category || (s.tags && s.tags.includes(category)))
+    .map(s => ({ ...s, match_reason: `category-match: ${category}` }));
+}
+
+/**
+ * Find skills that require a specific manifest service.
+ */
+export function findSkillsRequiringService(serviceName: string): SkillEntry[] {
+  const index = loadSkillIndex();
+  return index
+    .filter(s => s.requires_services && s.requires_services.includes(serviceName))
+    .map(s => ({ ...s, match_reason: `requires-service: ${serviceName}` }));
+}
+
+/**
+ * Get skill metadata summary for a specific skill.
+ */
+export function getSkillMetadata(skillName: string): SkillEntry | null {
+  const index = loadSkillIndex();
+  const entry = index.find(s => s.name === skillName);
+  if (!entry) return null;
+  return { ...entry, match_reason: "metadata-lookup" };
 }
 
 // ── Discovery Engine ─────────────────────────────────────────
@@ -215,7 +297,8 @@ export function formatSkillDiscovery(result: SkillDiscoveryResult): string {
   lines.push(`**🔵 Universal** (${result.universal.length} skills, always available):`);
   const top = result.universal.sort((a, b) => b.priority - a.priority).slice(0, 8);
   for (const s of top) {
-    lines.push(`  - **${s.name}** (p:${s.priority}) — ${s.description}`);
+    const cat = s.category ? ` [${s.category}]` : "";
+    lines.push(`  - **${s.name}**${cat} (p:${s.priority}) — ${s.description}`);
   }
   if (result.universal.length > 8) {
     lines.push(`  - ... and ${result.universal.length - 8} more universal skills`);
@@ -235,7 +318,8 @@ export function formatSkillDiscovery(result: SkillDiscoveryResult): string {
   if (result.project_requested.length > 0) {
     lines.push("**🟢 Project-Requested** (explicitly in META.yaml products[]):");
     for (const s of result.project_requested) {
-      lines.push(`  - **${s.name}** (p:${s.priority}) — ${s.description}`);
+      const cat = s.category ? ` [${s.category}]` : "";
+      lines.push(`  - **${s.name}**${cat} (p:${s.priority}) — ${s.description}`);
     }
     lines.push("");
   }

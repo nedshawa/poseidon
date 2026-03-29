@@ -1,169 +1,466 @@
-# Poseidon Skill Index v2.0
+# Poseidon Skill Index v3.0
 #
-# 3-tier taxonomy with explicit matching:
+# Rich metadata for every skill. Two purposes:
+#   1. Discovery: tier + priority + requires → which skills to load
+#   2. Identity: category + tags + version + author + status + services → what each skill IS
 #
-# UNIVERSAL  — always loaded, every project. No configuration needed.
-# PRODUCT    — loaded ONLY when:
-#              a) A universal skill depends on it (requires: [skill-name])
-#              b) The project explicitly requests it (META.yaml products: [skill-name])
-# PROJECT    — created by/for a specific project (in memory/projects/{id}/skills/)
-#
-# No implicit domain matching. Product skills require explicit request.
-# This makes skill loading PREDICTABLE — you always know why a skill loaded.
+# SKILL.md stays minimal (name + description for Claude Code routing).
+# This index provides the intelligence layer for Poseidon's skill management.
 
-version: "2.0"
+version: "3.0"
 
 skills:
-  # ─── UNIVERSAL (always loaded, every project) ───────────────
+
+  # ═══ UNIVERSAL (always loaded, every project) ═══════════════
+
   - name: research
     tier: universal
     priority: 95
     requires: []
     description: "Multi-agent research with 4 tiers"
+    category: research
+    tags: [multi-agent, parallel, web-search, synthesis, perplexity, gemini, claude, grok, url-verification]
+    version: "1.0.0"
+    author: poseidon
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-29"
+    requires_services: [claude_websearch]
+    complexity: heavy
+    sub_skills: 0
+    workflows: 17
+    has_tools: true
 
   - name: thinking
     tier: universal
     priority: 95
     requires: []
     description: "7 analytical and creative thinking modes"
+    category: analysis
+    tags: [first-principles, council, red-team, creative, science, world-model, iterative-depth, debate, brainstorm]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-29"
+    requires_services: []
+    complexity: heavy
+    sub_skills: 9
+    workflows: 34
+    has_tools: false
 
   - name: security
     tier: universal
     priority: 90
     requires: [investigation]
-    description: "Security assessment, prompt injection testing"
+    description: "Security assessment, prompt injection, recon, web assessment"
+    category: security
+    tags: [recon, pentest, owasp, prompt-injection, vulnerability, web-assessment, threat-model]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-29"
+    requires_services: []
+    complexity: heavy
+    sub_skills: 6
+    workflows: 38
+    has_tools: true
 
   - name: agents
     tier: universal
     priority: 90
     requires: []
-    description: "Custom agent composition from traits"
+    description: "Custom agent composition from traits + 5 named agents"
+    category: orchestration
+    tags: [compose-agent, traits, voices, named-agents, parallel, delegation]
+    version: "1.0.0"
+    author: poseidon
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-29"
+    requires_services: []
+    complexity: medium
+    sub_skills: 0
+    workflows: 6
+    has_tools: true
 
   - name: commit
     tier: universal
     priority: 85
     requires: []
     description: "Git commit workflows"
+    category: development
+    tags: [git, commit, version-control]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: light
+    sub_skills: 0
+    workflows: 0
+    has_tools: false
 
   - name: debug
     tier: universal
     priority: 85
     requires: []
     description: "Debugging workflows"
+    category: development
+    tags: [debug, troubleshoot, error, fix]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: light
+    sub_skills: 0
+    workflows: 0
+    has_tools: false
 
   - name: test
     tier: universal
     priority: 85
     requires: []
     description: "Test writing and execution"
+    category: development
+    tags: [testing, unit-test, integration, tdd]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: light
+    sub_skills: 0
+    workflows: 0
+    has_tools: false
 
   - name: code-review
     tier: universal
     priority: 80
     requires: []
     description: "Code review workflows"
+    category: development
+    tags: [review, quality, pr, pull-request]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: light
+    sub_skills: 0
+    workflows: 0
+    has_tools: false
 
   - name: refactor
     tier: universal
     priority: 80
     requires: []
     description: "Code refactoring patterns"
+    category: development
+    tags: [refactor, cleanup, architecture, simplify]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: light
+    sub_skills: 0
+    workflows: 0
+    has_tools: false
 
   - name: deploy
     tier: universal
     priority: 75
     requires: []
     description: "Deployment workflows"
+    category: infrastructure
+    tags: [deploy, release, ci-cd, production]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: light
+    sub_skills: 0
+    workflows: 0
+    has_tools: false
 
   - name: skill-builder
     tier: universal
     priority: 70
     requires: []
-    description: "Create, validate, canonicalize skills"
+    description: "Create, validate, canonicalize, upgrade skills"
+    category: meta
+    tags: [create-skill, validate, canonicalize, upgrade, scaffolding]
+    version: "1.0.0"
+    author: poseidon
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-28"
+    requires_services: []
+    complexity: medium
+    sub_skills: 0
+    workflows: 4
+    has_tools: false
 
   - name: project-init
     tier: universal
     priority: 70
     requires: []
-    description: "Initialize new projects"
+    description: "Initialize new projects from template"
+    category: meta
+    tags: [project, create, initialize, template]
+    version: "1.0.0"
+    author: poseidon
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: light
+    sub_skills: 0
+    workflows: 0
+    has_tools: false
 
   - name: evals
     tier: universal
     priority: 65
     requires: []
-    description: "Evaluation and benchmarking"
+    description: "Evaluation, benchmarking, model comparison"
+    category: quality
+    tags: [eval, benchmark, compare-models, regression-test, judge]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: medium
+    sub_skills: 0
+    workflows: 3
+    has_tools: true
 
   - name: content-analysis
     tier: universal
     priority: 65
     requires: []
-    description: "Content extraction and analysis"
+    description: "Content extraction, wisdom, analysis, summarization"
+    category: content
+    tags: [extract-wisdom, summarize, analyze, insights, youtube, podcast]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: medium
+    sub_skills: 1
+    workflows: 6
+    has_tools: true
 
   - name: context-search
     tier: universal
     priority: 60
     requires: []
-    description: "Search across Poseidon context"
+    description: "Search across Poseidon context — docs, skills, memory"
+    category: meta
+    tags: [search, context, find, lookup, cs]
+    version: "1.0.0"
+    author: poseidon
+    status: active
+    created: "2026-03-28"
+    updated: "2026-03-28"
+    requires_services: []
+    complexity: light
+    sub_skills: 0
+    workflows: 0
+    has_tools: false
 
   - name: documents
     tier: universal
     priority: 60
     requires: [media]
-    description: "Document processing (PDF, DOCX, etc.) — needs media for visuals"
+    description: "Document processing — PDF, DOCX, XLSX, PPTX"
+    category: content
+    tags: [pdf, docx, xlsx, pptx, convert, extract, merge]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: medium
+    sub_skills: 0
+    workflows: 3
+    has_tools: false
 
   - name: browser
     tier: universal
     priority: 55
     requires: []
-    description: "Browser automation and screenshots"
+    description: "Browser automation, screenshots, data extraction"
+    category: automation
+    tags: [browser, screenshot, playwright, web-automation, scrape]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: medium
+    sub_skills: 0
+    workflows: 3
+    has_tools: false
 
   - name: agi
     tier: universal
     priority: 50
     requires: []
-    description: "AI system architecture audit and comparison"
+    description: "AI system architecture audit, simulation, comparison"
+    category: meta
+    tags: [ai-architecture, audit, simulate, compare, pai, poseidon, self-improvement]
+    version: "1.0.0"
+    author: poseidon
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-28"
+    requires_services: []
+    complexity: heavy
+    sub_skills: 0
+    workflows: 7
+    has_tools: true
 
-  # ─── PRODUCT (loaded only by dependency or explicit request) ─
+  # ═══ PRODUCT (loaded by dependency or explicit request) ═════
+
   - name: telos
     tier: product
     priority: 80
     requires: []
-    description: "Life goals, projects, beliefs, wisdom"
+    description: "Life goals, projects, beliefs, wisdom, narrative"
+    category: personal
+    tags: [goals, mission, beliefs, books, movies, narrative, interview, report]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: medium
+    sub_skills: 0
+    workflows: 4
+    has_tools: true
 
   - name: us-metrics
     tier: product
     priority: 75
     requires: []
-    description: "US economic indicators from FRED, BLS, etc."
+    description: "US economic indicators from FRED, BLS, Treasury, EIA"
+    category: finance
+    tags: [gdp, inflation, unemployment, economic-metrics, fred, treasury]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: medium
+    sub_skills: 0
+    workflows: 2
+    has_tools: true
 
   - name: media
     tier: product
     priority: 75
     requires: []
-    description: "Visual content creation, diagrams, video"
-    # Auto-loaded because universal 'documents' requires it
+    description: "Visual content — diagrams, mermaid, comics, D3, Remotion video"
+    category: creative
+    tags: [art, diagrams, mermaid, comics, d3, remotion, video, thumbnails, infographics]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: heavy
+    sub_skills: 2
+    workflows: 19
+    has_tools: true
 
   - name: investigation
     tier: product
     priority: 70
     requires: []
-    description: "OSINT, company intel, people search"
-    # Auto-loaded because universal 'security' requires it
+    description: "OSINT, company intel, people search, due diligence"
+    category: intelligence
+    tags: [osint, due-diligence, company-lookup, people-search, domain-recon]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: heavy
+    sub_skills: 2
+    workflows: 12
+    has_tools: false
 
   - name: scraping
     tier: product
     priority: 65
     requires: []
-    description: "Web scraping via Bright Data and Apify"
+    description: "Web scraping — Bright Data proxy + 18 Apify actors"
+    category: data
+    tags: [scraping, bright-data, apify, crawl, bot-detection, captcha]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: heavy
+    sub_skills: 2
+    workflows: 3
+    has_tools: true
 
   - name: utilities
     tier: product
     priority: 60
     requires: []
-    description: "CLI generation, Fabric, Cloudflare, parsing"
+    description: "CLI generation, Fabric, Cloudflare, parsing, audio, prompting"
+    category: development
+    tags: [cli, fabric, cloudflare, parsing, audio, prompting, aphorisms, browser]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: heavy
+    sub_skills: 17
+    workflows: 43
+    has_tools: true
 
   - name: cli-builder
     tier: product
     priority: 55
     requires: []
     description: "Create CLI tools from APIs"
+    category: development
+    tags: [cli, api-wrapper, command-line, typescript]
+    version: "1.0.0"
+    author: imported-from-pai
+    status: active
+    created: "2026-03-25"
+    updated: "2026-03-25"
+    requires_services: []
+    complexity: medium
+    sub_skills: 0
+    workflows: 3
+    has_tools: false

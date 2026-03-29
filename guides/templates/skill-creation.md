@@ -7,7 +7,42 @@
 1. Create directory: `skills/[skill-name]/`
 2. Create `SKILL.md` with YAML frontmatter + workflow routing
 3. Create `workflows/` directory with workflow files
-4. Validate: run canonicalize workflow
+4. Add entry to `skills/skill-index.yaml` with full 18-field metadata
+5. Validate: run canonicalize workflow
+
+## Skill Index Entry (MANDATORY — 18 fields)
+
+Every skill MUST have an entry in `skills/skill-index.yaml` with ALL fields:
+
+```yaml
+- name: my-skill
+  tier: product                    # universal | product | project
+  priority: 60                     # 0-100, higher = more relevant
+  requires: []                     # other skills this depends on
+  description: "What it does"      # one-line summary
+
+  # Identity
+  category: development            # research | analysis | security | development | content | finance | creative | intelligence | data | automation | orchestration | meta | quality | infrastructure | personal
+  tags: [keyword1, keyword2]       # searchable keywords
+  version: "1.0.0"                # semver
+  author: user-created             # poseidon | imported-from-pai | imported-from-vault | user-created
+  status: beta                     # active | beta | deprecated
+
+  # Dates
+  created: "2026-03-29"           # when first created
+  updated: "2026-03-29"           # when last modified
+
+  # Dependencies
+  requires_services: []            # manifest services needed (fmp, perplexity, etc.)
+
+  # Size
+  complexity: light                # light (<50 lines) | medium (50-200) | heavy (200+)
+  sub_skills: 0                    # count of sub-skill directories
+  workflows: 0                     # count of workflow .md files
+  has_tools: false                 # does it have TypeScript handlers/tools?
+```
+
+**Rule R28:** All 18 fields are mandatory. Incomplete metadata = skill cannot be properly discovered.
 
 ## SKILL.md Template
 
