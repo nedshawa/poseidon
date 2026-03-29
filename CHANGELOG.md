@@ -1,3 +1,22 @@
+## 3.17.0 (2026-03-29)
+
+**Type:** minor — new skills: 6 → 25
+
+### System State
+| Metric | Count |
+|--------|-------|
+| Skills | 25 (64 SKILL.md) |
+| Workflows | 192 |
+| Handlers | 23 |
+| Hooks | 6 |
+| Tools | 23 |
+| Docs | 18 |
+| Guides | 13 |
+| Agents | 5 |
+| Rules | 29 |
+| Security Patterns | 51 |
+| Algorithm | v1.2 |
+
 ## 3.16.0 (2026-03-29)
 
 **Type:** minor — new skills: 6 → 25

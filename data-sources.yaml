@@ -1,0 +1,335 @@
+# Poseidon Data Source Index
+#
+# Maps every external data source to its domain, quality tier, access method,
+# manifest dependency, and fallback chain.
+#
+# Routing logic: for a domain request, find all sources for that domain,
+# sort by quality (premium > standard > free), check manifest for enabled status,
+# use the highest-quality enabled source. If none enabled → use fallback chain.
+#
+# Quality tiers:
+#   premium  — paid API, high-quality, structured data, reliable
+#   standard — free API with limits, good quality, may rate-limit
+#   free     — no key needed, scraping-based or built-in, lower reliability
+
+version: "1.0"
+
+sources:
+
+  # ═══ FINANCE ════════════════════════════════════════════════
+
+  - id: fmp
+    name: "Financial Modeling Prep"
+    domain: finance
+    type: api
+    quality: premium
+    requires_key: true
+    manifest_service: fmp
+    fallback: yahoo_finance
+    url: "https://financialmodelingprep.com/api/v3/"
+    used_by: [equity-research, technical-analysis, daily-screener, watchlist]
+    provides: [stock-quotes, fundamentals, earnings, options, institutional, analyst-ratings, screener]
+
+  - id: yahoo_finance
+    name: "Yahoo Finance"
+    domain: finance
+    type: scraping
+    quality: free
+    requires_key: false
+    manifest_service: null
+    fallback: null
+    url: "https://finance.yahoo.com/"
+    used_by: [equity-research, technical-analysis]
+    provides: [stock-quotes, basic-fundamentals, historical-prices]
+
+  - id: fred
+    name: "Federal Reserve Economic Data"
+    domain: finance
+    type: api
+    quality: standard
+    requires_key: true
+    manifest_service: fred
+    fallback: fred_web
+    url: "https://api.stlouisfed.org/fred/"
+    used_by: [us-metrics]
+    provides: [gdp, inflation, unemployment, interest-rates, economic-indicators]
+
+  - id: fred_web
+    name: "FRED Website (scraping)"
+    domain: finance
+    type: scraping
+    quality: free
+    requires_key: false
+    manifest_service: null
+    fallback: null
+    url: "https://fred.stlouisfed.org/"
+    used_by: [us-metrics]
+    provides: [gdp, inflation, unemployment]
+
+  - id: bls
+    name: "Bureau of Labor Statistics"
+    domain: finance
+    type: api
+    quality: standard
+    requires_key: false
+    manifest_service: null
+    fallback: null
+    url: "https://api.bls.gov/publicAPI/v2/"
+    used_by: [us-metrics]
+    provides: [employment, cpi, ppi, labor-statistics]
+
+  - id: treasury
+    name: "US Treasury"
+    domain: finance
+    type: api
+    quality: standard
+    requires_key: false
+    manifest_service: null
+    fallback: null
+    url: "https://api.fiscaldata.treasury.gov/services/api/"
+    used_by: [us-metrics]
+    provides: [yields, debt, fiscal-data]
+
+  - id: eia
+    name: "Energy Information Administration"
+    domain: finance
+    type: api
+    quality: standard
+    requires_key: true
+    manifest_service: eia
+    fallback: null
+    url: "https://api.eia.gov/v2/"
+    used_by: [us-metrics]
+    provides: [oil-prices, gas-prices, energy-data]
+
+  # ═══ RESEARCH ═══════════════════════════════════════════════
+
+  - id: perplexity
+    name: "Perplexity"
+    domain: research
+    type: api
+    quality: premium
+    requires_key: true
+    manifest_service: perplexity
+    fallback: claude_websearch
+    url: "https://api.perplexity.ai/"
+    used_by: [research]
+    provides: [web-search, real-time-data, cited-answers]
+
+  - id: gemini
+    name: "Google Gemini"
+    domain: research
+    type: api
+    quality: premium
+    requires_key: true
+    manifest_service: gemini
+    fallback: claude_websearch
+    url: "https://generativelanguage.googleapis.com/"
+    used_by: [research]
+    provides: [web-search, technical-docs, google-ecosystem, multimodal]
+
+  - id: grok
+    name: "xAI Grok"
+    domain: research
+    type: api
+    quality: standard
+    requires_key: true
+    manifest_service: grok
+    fallback: claude_websearch
+    url: "https://api.x.ai/"
+    used_by: [research]
+    provides: [web-search, contrarian-analysis, real-time]
+
+  - id: claude_websearch
+    name: "Claude WebSearch"
+    domain: research
+    type: built-in
+    quality: free
+    requires_key: false
+    manifest_service: claude_websearch
+    fallback: null
+    url: null
+    used_by: [research]
+    provides: [web-search, scholarly-synthesis, analysis]
+
+  - id: brave
+    name: "Brave Search"
+    domain: research
+    type: api
+    quality: standard
+    requires_key: true
+    manifest_service: brave
+    fallback: claude_websearch
+    url: "https://api.search.brave.com/"
+    used_by: [research]
+    provides: [web-search, privacy-focused]
+
+  # ═══ SCRAPING ═══════════════════════════════════════════════
+
+  - id: apify
+    name: "Apify"
+    domain: scraping
+    type: api
+    quality: premium
+    requires_key: true
+    manifest_service: apify
+    fallback: bright_data
+    url: "https://api.apify.com/v2/"
+    used_by: [scraping]
+    provides: [social-media, ecommerce, web-scraping, 18-platform-actors]
+
+  - id: bright_data
+    name: "Bright Data"
+    domain: scraping
+    type: api
+    quality: premium
+    requires_key: true
+    manifest_service: bright_data
+    fallback: null
+    url: "https://api.brightdata.com/"
+    used_by: [scraping]
+    provides: [proxy, captcha-solving, residential-ip, web-scraping]
+
+  # ═══ MEDIA ══════════════════════════════════════════════════
+
+  - id: replicate
+    name: "Replicate"
+    domain: media
+    type: api
+    quality: premium
+    requires_key: true
+    manifest_service: replicate
+    fallback: openai_images
+    url: "https://api.replicate.com/v1/"
+    used_by: [media]
+    provides: [image-generation, flux, stable-diffusion]
+
+  - id: openai_images
+    name: "OpenAI GPT-Image"
+    domain: media
+    type: api
+    quality: premium
+    requires_key: true
+    manifest_service: openai
+    fallback: null
+    url: "https://api.openai.com/v1/images/"
+    used_by: [media]
+    provides: [image-generation, gpt-image-1]
+
+  # ═══ VOICE ══════════════════════════════════════════════════
+
+  - id: elevenlabs
+    name: "ElevenLabs"
+    domain: voice
+    type: api
+    quality: premium
+    requires_key: true
+    manifest_service: elevenlabs
+    fallback: null
+    url: "http://localhost:8888/notify"
+    used_by: [voice-completion]
+    provides: [text-to-speech, voice-cloning]
+
+  - id: deepgram
+    name: "Deepgram"
+    domain: voice
+    type: api
+    quality: premium
+    requires_key: true
+    manifest_service: deepgram
+    fallback: null
+    url: "https://api.deepgram.com/"
+    used_by: [content-analysis]
+    provides: [speech-to-text, transcription]
+
+  # ═══ SECURITY ═══════════════════════════════════════════════
+
+  - id: shodan
+    name: "Shodan"
+    domain: security
+    type: api
+    quality: premium
+    requires_key: true
+    manifest_service: shodan
+    fallback: null
+    url: "https://api.shodan.io/"
+    used_by: [security]
+    provides: [port-scanning, device-search, vulnerability-detection]
+
+  - id: ipinfo
+    name: "IPinfo"
+    domain: security
+    type: api
+    quality: standard
+    requires_key: true
+    manifest_service: ipinfo
+    fallback: null
+    url: "https://ipinfo.io/"
+    used_by: [security]
+    provides: [ip-geolocation, asn-lookup, hosting-detection]
+
+  # ═══ NOTIFICATIONS ══════════════════════════════════════════
+
+  - id: ntfy
+    name: "ntfy"
+    domain: notifications
+    type: api
+    quality: free
+    requires_key: true
+    manifest_service: ntfy
+    fallback: null
+    url: "https://ntfy.sh/"
+    used_by: [notifications]
+    provides: [push-notifications]
+
+  # ═══ INFRASTRUCTURE ═════════════════════════════════════════
+
+  - id: github
+    name: "GitHub"
+    domain: infrastructure
+    type: api
+    quality: premium
+    requires_key: false
+    manifest_service: github
+    fallback: null
+    url: "https://api.github.com/"
+    used_by: [commit, deploy]
+    provides: [git-operations, pr-management, issue-tracking]
+
+  - id: google_calendar
+    name: "Google Calendar"
+    domain: productivity
+    type: api
+    quality: premium
+    requires_key: true
+    manifest_service: google_calendar
+    fallback: null
+    url: "https://www.googleapis.com/calendar/"
+    used_by: [calendar, time-utilization]
+    provides: [calendar-events, scheduling, availability]
+
+  # ═══ CONTENT ════════════════════════════════════════════════
+
+  - id: youtube
+    name: "YouTube"
+    domain: content
+    type: scraping
+    quality: free
+    requires_key: false
+    manifest_service: null
+    fallback: null
+    url: "https://youtube.com/"
+    used_by: [content-analysis, research]
+    provides: [video-transcripts, metadata]
+
+  - id: fabric
+    name: "Fabric (local)"
+    domain: content
+    type: local
+    quality: free
+    requires_key: false
+    manifest_service: null
+    fallback: null
+    url: null
+    used_by: [research, content-analysis]
+    provides: [242-patterns, summarization, extraction]

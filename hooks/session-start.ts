@@ -270,6 +270,12 @@ async function main() {
       const manifestText = formatManifestForInjection();
       if (manifestText) parts.push(manifestText);
     } catch {}
+    // 3e. Data source routing (what external data is available)
+    try {
+      const { formatDataSourcesForInjection } = require("./handlers/data-source-router");
+      const dsText = formatDataSourcesForInjection();
+      if (dsText) parts.push(dsText);
+    } catch {}
     // 4. Steering rules
     const steering = loadSteeringRules();
     if (steering) parts.push(steering);

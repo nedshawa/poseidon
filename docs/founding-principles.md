@@ -145,4 +145,14 @@ Poseidon only uses what is enabled. The capability manifest (`poseidon-manifest.
 
 ---
 
-*These 21 principles are the constitutional foundation of Poseidon. All architectural decisions, skill designs, and system behaviors should trace back to one or more of these principles.*
+## 22. Data Source Awareness (Poseidon-Only)
+
+Poseidon knows every external data source — its domain, quality tier, access method, and fallback chain. When data is needed, Poseidon routes to the highest-quality ENABLED source. If premium is unavailable, it falls back to standard, then free. It never blind-attempts a source without checking the manifest.
+
+**The fallback principle:** Premium (paid API, structured data) > Standard (free API, rate-limited) > Free (scraping, built-in). The fallback chain means Poseidon ALWAYS has a path to data — even if every paid service is disabled, free alternatives exist for critical domains (Yahoo Finance for stocks, Claude WebSearch for research, FRED website for economics).
+
+**Poseidon implementation:** `data-sources.yaml` indexes every external source with domain, quality, manifest dependency, fallback chain, and which skills use it. `hooks/handlers/data-source-router.ts` resolves the best available source per domain. Session-start injects available data sources into system-reminder.
+
+---
+
+*These 22 principles are the constitutional foundation of Poseidon. All architectural decisions, skill designs, and system behaviors should trace back to one or more of these principles.*
