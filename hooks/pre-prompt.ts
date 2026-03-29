@@ -63,7 +63,21 @@ function detectSwitch(prompt: string): string | null {
   if (flag) return flag[1];
   const sw = prompt.match(/switch\s+(?:to\s+)?project\s+(\S+)/i);
   if (sw) return sw[1];
-  const num = prompt.trim().match(/^(\d+)$/);
+  const trimmed = prompt.trim().toLowerCase();
+  // Handle project picker letter selections (A = active project, B1/B2 = others by index, C = new project)
+  if (trimmed === "a") {
+    // "A" means continue with active project — return active to trigger context load
+    try { const s = loadSettings(); return s?.project?.active_project || "main"; } catch { return "main"; }
+  }
+  const bMatch = trimmed.match(/^b\s*(\d+)?$/);
+  if (bMatch) {
+    const sorted = getSortedProjects();
+    const active = (() => { try { return loadSettings()?.project?.active_project; } catch { return null; } })();
+    const others = sorted.filter(s => s !== active);
+    const idx = bMatch[1] ? parseInt(bMatch[1]) - 1 : 0;
+    return idx >= 0 && idx < others.length ? others[idx] : null;
+  }
+  const num = trimmed.match(/^(\d+)$/);
   if (num) { const idx = parseInt(num[1]) - 1; const sorted = getSortedProjects(); return idx >= 0 && idx < sorted.length ? sorted[idx] : null; }
   return null;
 }
