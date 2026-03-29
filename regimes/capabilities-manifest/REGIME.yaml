@@ -1,0 +1,22 @@
+name: capabilities-manifest
+version: "1.0"
+description: "Validate poseidon-manifest.yaml services have required secrets and consistent capabilities"
+scope: all-projects
+enabled: true
+
+triggers:
+  - event: session-end
+    condition: always
+  - event: manual
+    condition: always
+
+standard:
+  manifest_file: "poseidon-manifest.yaml"
+  secrets_file: "secrets.enc"
+
+enforcement:
+  on_session_end: warn
+  on_manual: report
+
+audit:
+  log_path: "memory/learning/regimes/capabilities-manifest.jsonl"

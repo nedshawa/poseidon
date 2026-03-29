@@ -1,8 +1,8 @@
 # Poseidon Founding Principles
 
-**17 principles governing the design, implementation, and evolution of Poseidon.**
+**23 principles governing the design, implementation, and evolution of Poseidon.**
 
-Adapted from PAI's 16 founding principles with Poseidon-specific additions for project isolation, portability, and semi-autonomous learning.
+Adapted from PAI's 16 founding principles with 7 Poseidon-specific additions for project isolation, portability, semi-autonomous learning, and regime-based governance.
 
 ---
 
@@ -34,7 +34,7 @@ The system architecture matters more than the underlying AI model. A well-struct
 
 Favor predictable, repeatable outcomes. Same input → same output. Behavior defined by code, not prompts.
 
-**Poseidon implementation:** CLAUDE.md is template-generated (not handwritten). Mode classification is a code-based 11-signal scorer (not keyword rules in a prompt). All 9 handlers are TypeScript functions with deterministic logic.
+**Poseidon implementation:** CLAUDE.md is template-generated (not handwritten). Mode classification is a code-based 11-signal scorer (not keyword rules in a prompt). All 25 handlers are TypeScript functions with deterministic logic.
 
 ## 6. Code Before Prompts
 
@@ -52,7 +52,7 @@ Define expected behavior before writing implementation. Write test before implem
 
 Do one thing well. Compose tools through standard interfaces.
 
-**Poseidon implementation:** 21 CLI tools, each single-purpose. port-skill.ts converts packs. mine-reflections.ts extracts patterns. upgrade-algorithm.ts manages versions. synthesize-learning.ts aggregates weekly patterns. Each tool works independently, composes via shell pipelines.
+**Poseidon implementation:** 24 CLI tools, each single-purpose. port-skill.ts converts packs. mine-reflections.ts extracts patterns. upgrade-algorithm.ts manages versions. synthesize-learning.ts aggregates weekly patterns. Each tool works independently, composes via shell pipelines.
 
 ## 9. ENG / SRE Principles
 
@@ -157,4 +157,18 @@ Poseidon knows every external data source — its domain, cost tier, access meth
 
 ---
 
-*These 22 principles are the constitutional foundation of Poseidon. All architectural decisions, skill designs, and system behaviors should trace back to one or more of these principles.*
+## 23. Regime-Based Governance (Poseidon-Only)
+
+Standards are enforced, not documented. Every cross-project standard — documentation format, secret management, skill structure, or any future governance domain — is codified as a **Regime**: a declarative policy with a template, a validator, and an audit trail. Adding a new standard means adding a folder, not changing the architecture. Governance without automation is suggestion; suggestion without enforcement is drift.
+
+**The Regime primitive:** A Regime is a self-contained governance contract consisting of: (1) a **standard** defining what "correct" looks like, (2) **triggers** defining when to check compliance, (3) a **validator** performing deterministic compliance checking, (4) **enforcement** levels defining what happens on non-compliance, and (5) an **audit trail** logging every check. All five are declarative in REGIME.yaml; only the validator is code.
+
+**Extensibility guarantee:** Adding a new governance domain requires creating one folder with a REGIME.yaml and a validator.ts, then adding one line to REGISTRY.yaml. No hooks modified, no handlers written, no principles added. The regime-runner is the generic engine; regimes are the domain-specific content.
+
+**Two-layer enforcement:** Enforce-on-update (session-end hook runs validators after Algorithm sessions) provides freshest-context checking. Periodic-validation (`bun tools/regime-check.ts`) provides safety-net auditing. Both log to the same JSONL audit trail.
+
+**Poseidon implementation:** `regimes/` top-level directory with REGISTRY.yaml as sole source of truth. Three initial regimes: documentation (MANIFEST.md template + freshness), secrets (registry tracking + hardcoded detection), skill-hygiene (quality gate + structure checks). `hooks/handlers/regime-runner.ts` is the enforcement engine. `tools/regime-check.ts` is the CLI audit tool. Session-end hook runs matching regimes automatically. Pre-prompt hook injects compliance warnings.
+
+---
+
+*These 23 principles are the constitutional foundation of Poseidon. All architectural decisions, skill designs, and system behaviors should trace back to one or more of these principles.*

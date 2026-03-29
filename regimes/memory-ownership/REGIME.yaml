@@ -1,0 +1,30 @@
+name: memory-ownership
+version: "1.0"
+description: "Enforce SYSTEM/USER/MIXED ownership boundaries in project memory"
+scope: all-projects
+enabled: true
+
+triggers:
+  - event: session-end
+    condition: always
+  - event: manual
+    condition: always
+
+standard:
+  user_files:
+    - "GOALS.md"
+    - "DECISIONS.md"
+    - "RULES.md"
+    - "META.yaml"
+  system_files:
+    - "CONTEXT.md"
+  required_structure:
+    - "META.yaml"
+  learning_dir: "memory/learning"
+
+enforcement:
+  on_session_end: warn
+  on_manual: report
+
+audit:
+  log_path: "memory/learning/regimes/memory-ownership.jsonl"

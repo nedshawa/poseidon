@@ -1,0 +1,27 @@
+name: data-source-registry
+version: "1.0"
+description: "Validate data-sources.yaml entries are complete, consistent, and cross-referenced"
+scope: all-projects
+enabled: true
+
+triggers:
+  - event: session-end
+    condition: always
+  - event: manual
+    condition: always
+
+standard:
+  sources_file: "data-sources.yaml"
+  index_file: "skills/skill-index.yaml"
+  required_source_fields:
+    - "id"
+    - "name"
+    - "domain"
+    - "cost"
+
+enforcement:
+  on_session_end: warn
+  on_manual: report
+
+audit:
+  log_path: "memory/learning/regimes/data-source-registry.jsonl"

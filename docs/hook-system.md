@@ -1,6 +1,6 @@
 # Hook System
 
-Poseidon uses 5 lifecycle hooks backed by 9 handler modules. Hooks are the orchestration layer; handlers provide reusable logic. All hooks are TypeScript, async, and fail-graceful — a broken hook never blocks Claude Code.
+Poseidon uses 6 lifecycle hooks backed by 25 handler modules. Hooks are the orchestration layer; handlers provide reusable logic. All hooks are TypeScript, async, and fail-graceful — a broken hook never blocks Claude Code.
 
 ## Event Lifecycle
 
@@ -38,6 +38,23 @@ Handlers live in `hooks/handlers/` and are imported by hooks as needed.
 | learning-metrics.ts | Tracks learning pipeline health (rule adoption, signal rates) |
 | rule-scorer.ts | Scores and ranks steering rule candidates by evidence weight |
 | thinking-tracker.ts | Monitors algorithm phase transitions and thinking depth |
+| regime-runner.ts | Core enforcement engine for the governance regime system |
+| agent-guard.ts | Validates subagent types and blocks injection patterns |
+| skill-guard.ts | Validates skill names exist before invocation |
+| data-source-router.ts | Routes data requests via cost-tier fallback chains |
+| manifest-loader.ts | Loads and caches poseidon-manifest.yaml capabilities |
+| skill-discovery.ts | 3-tier skill matching (universal/product/project) |
+| preferences-loader.ts | Loads project-level skill preferences |
+| doc-integrity.ts | Deterministic document integrity checker |
+| drift-detection.ts | Detects behavioral drift in long sessions |
+| prd-sync.ts | Syncs PRD frontmatter to work.json state |
+| security-audit.ts | Logs all security events to audit JSONL |
+| session-auto-name.ts | Auto-generates session names from first prompt |
+| source-auto-indexer.ts | Auto-identifies new API keys via patterns |
+| terminal-state.ts | Kitty terminal tab color management |
+| voice-completion.ts | Voice notification on response completion |
+| work-completion.ts | Captures work completion reflections |
+| relationship-memory.ts | Extracts relationship notes from sessions |
 
 Additionally, `error-capture.ts` at the hooks root provides shared error handling and graceful failure logging across all hooks.
 

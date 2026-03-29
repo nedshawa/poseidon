@@ -62,8 +62,9 @@ Push + sync to Chief
 
 The tool scans all docs/, guides/, and CLAUDE.md.template for numeric claims:
 - "25 skills" → compares against actual `ls skills/ | wc -l`
-- "20 handlers" → compares against actual `ls hooks/handlers/*.ts | wc -l`
-- "21 tools" → compares against actual `ls tools/*.ts tools/*.sh | wc -l`
+- "25 handlers" → compares against actual `ls hooks/handlers/*.ts | wc -l`
+- "24 tools" → compares against actual `ls tools/*.ts tools/*.sh | wc -l`
+- "10 regimes" → compares against actual `ls regimes/*/REGIME.yaml | wc -l`
 - "207 workflows" → compares against actual workflow .md files in skills/
 - "18 rules" → compares against actual `grep -c` in rules/system.md
 

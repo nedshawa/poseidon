@@ -378,6 +378,31 @@ async function main() {
       driftSignals = 0; // Drift detection available but needs assistant message parsing
     } catch {}
 
+    // --- NEW: Regime compliance check (governance enforcement) ---
+    // Runs validators and caches warnings for pre-prompt injection (avoids hot-path validation)
+    let regimeWarnings = 0;
+    try {
+      const { runRegimes, getRegimeWarnings } = require("./handlers/regime-runner");
+      const results = await runRegimes({ trigger: "session-end" });
+      const nonCompliant = results.filter((r: any) => !r.validation.compliant);
+      regimeWarnings = nonCompliant.length;
+      for (const r of nonCompliant.slice(0, 3)) {
+        const topIssue = r.validation.issues[0];
+        if (topIssue) {
+          console.error(`\u2699 Regime \u2502 [${r.regime}] ${r.project}: ${topIssue.message}`);
+        }
+      }
+      // Cache warnings for pre-prompt to read (avoids re-running validators per prompt)
+      try {
+        const warnings = await getRegimeWarnings();
+        const cachePath = poseidonPath("memory", "learning", "regimes", ".warnings-cache.json");
+        mkdirSync(dirname(cachePath), { recursive: true });
+        writeFileSync(cachePath, JSON.stringify({ timestamp: new Date().toISOString(), warnings }));
+      } catch {}
+    } catch (err) {
+      console.error(`\u2699 Regime \u2502 error: ${err}`);
+    }
+
     // --- Reset terminal tab (Kitty) ---
     try {
       const { resetTab } = require("./handlers/terminal-state");
@@ -389,6 +414,7 @@ async function main() {
     if (claudeRebuilt) parts.push("CLAUDE.md rebuilt");
     if (relationshipNotes > 0) parts.push(`${relationshipNotes} relationship notes`);
     if (integrityIssues > 0) parts.push(`${integrityIssues} doc issues`);
+    if (regimeWarnings > 0) parts.push(`${regimeWarnings} regime warnings`);
     parts.push(`abandoned: ${input.reason === "user_exit" ? "no" : input.reason || "unknown"}`);
     console.error(`\u2699 SessionEnd \u2502 ${parts.join(" \u2502 ")}`);
   } catch (err) {

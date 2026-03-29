@@ -82,7 +82,7 @@ Score each principle 1-10 with evidence:
 **System:** [name] | **Date:** [date] | **Auditor:** AGI Skill
 
 ## Principle Scores
-[Table of 16 principles with scores and evidence]
+[Table of 23 principles with scores and evidence]
 
 ## Subsystem Scores
 | Subsystem | Score | Key Finding |

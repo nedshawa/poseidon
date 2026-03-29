@@ -63,7 +63,25 @@ Update `settings.json` to set the new project as the active project:
 - Set `activeProject` to the project ID
 - Preserve all other settings
 
-### Step 5: Initialize Project Directory
+### Step 5: Apply Regime Templates
+
+After creating the project directory, apply templates from all enabled regimes:
+
+1. Read `regimes/REGISTRY.yaml` to get all enabled regimes
+2. For each regime with an `on_project_create: apply-template` enforcement:
+   - Read its `REGIME.yaml` for `standard.required_files`
+   - For each required file with a `template` path:
+     - If the file does NOT already exist in the project, copy the template
+     - Replace placeholders: `{PROJECT_NAME}`, `{CREATED_DATE}`, `{OWNER}`, `{DESCRIPTION}`
+3. This ensures every new project starts compliant with all active governance regimes
+
+Example for the documentation regime:
+- Copies `regimes/documentation/template/MANIFEST.md` → `{project-path}/MANIFEST.md`
+- Fills in project name, date, owner, description from Step 1
+
+**Do NOT overwrite existing files** — if a MANIFEST.md already exists, skip it.
+
+### Step 6: Initialize Project Directory
 
 If the project path does not exist yet:
 - Create the directory

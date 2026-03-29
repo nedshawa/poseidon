@@ -1,0 +1,13 @@
+version: "1.0"
+jobs:
+  - id: test-echo
+    name: "Test Echo Job"
+    enabled: true
+    schedule: "0 6 * * *"
+    timezone: "UTC"
+    type: script
+    command: "echo hello from poseidon scheduler"
+    timeout: 30
+    owner: "ned"
+    purpose: "Verify scheduler pipeline works end-to-end"
+    on_failure: notify

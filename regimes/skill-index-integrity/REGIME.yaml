@@ -1,0 +1,27 @@
+name: skill-index-integrity
+version: "1.0"
+description: "Validate skill-index.yaml entries match actual skill directories"
+scope: all-projects
+enabled: true
+
+triggers:
+  - event: session-end
+    condition: skill-files-modified
+  - event: manual
+    condition: always
+
+standard:
+  index_file: "skills/skill-index.yaml"
+  skills_dir: "skills"
+  required_index_fields:
+    - "name"
+    - "tier"
+    - "priority"
+    - "description"
+
+enforcement:
+  on_session_end: warn
+  on_manual: report
+
+audit:
+  log_path: "memory/learning/regimes/skill-index-integrity.jsonl"

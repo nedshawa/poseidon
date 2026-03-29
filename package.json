@@ -1,6 +1,6 @@
 {
   "name": "poseidon",
-  "version": "3.19.0",
+  "version": "3.20.0",
   "description": "Personal AI Infrastructure for Claude Code",
   "scripts": {
     "init": "bun tools/init.ts",
@@ -13,7 +13,8 @@
     "onboard": "bun tools/onboard.ts",
     "dashboard": "bun tools/dashboard.ts",
     "mine-reflections": "bun tools/mine-reflections.ts",
-    "upgrade-algorithm": "bun tools/upgrade-algorithm.ts"
+    "upgrade-algorithm": "bun tools/upgrade-algorithm.ts",
+    "regime-check": "bun tools/regime-check.ts"
   },
   "bin": {
     "poseidon": "tools/poseidon.ts",

@@ -76,7 +76,7 @@ Every project automatically has access to:
 - All 25+ skills and 207+ workflows
 - All configured API keys via SecretClient
 - The Algorithm (v1.2) for complex work
-- All 15 hook handlers (security, learning, scoring)
+- All 25 hook handlers (security, learning, scoring, governance)
 - All 5 named agents
 - All steering rules
 

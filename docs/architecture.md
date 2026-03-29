@@ -2,7 +2,7 @@
 
 ## Overview
 
-Poseidon is a personal AI infrastructure layer for Claude Code. It sits between the user and Claude Code, providing persistent memory, learning from mistakes, project isolation, and security enforcement.
+Poseidon is a personal AI infrastructure layer for Claude Code. It sits between the user and Claude Code, providing persistent memory, learning from mistakes, project isolation, security enforcement, and governance via the Regime system.
 
 ## Core Principles
 
@@ -36,7 +36,8 @@ User Prompt
 │    Sentiment capture, learning, project update   │
 │                                                  │
 │  SessionEnd ──> session-end.ts                   │
-│    Summarize, rule candidates, rebuild           │
+│    Summarize, rule candidates, regime check,     │
+│    rebuild                                       │
 └─────────────────────────────────────────────────┘
     |
     v
@@ -57,6 +58,13 @@ Response to User
 │   ├── v1.1.md            # Production hardened
 │   ├── v1.2.md            # ISC decomposition + visual feedback
 │   └── LATEST -> v1.2.md  # Symlink to active version
+│
+├── regimes/               # Governance policies (Principle #23)
+│   ├── REGISTRY.yaml      # Index of all regimes
+│   ├── lib/types.ts       # Core interfaces
+│   ├── documentation/     # MANIFEST.md enforcement
+│   ├── secrets/           # Secret management compliance
+│   └── skill-hygiene/     # Skill quality gate
 │
 ├── hooks/                 # TypeScript lifecycle handlers
 │   ├── session-start.ts   # SessionStart event
@@ -103,7 +111,7 @@ Response to User
 
 | Boundary | Directories | Who Writes |
 |----------|-------------|------------|
-| SYSTEM | algorithm/, hooks/, tools/, security/, CLAUDE.md, logs/ | Auto-modified by rebuild and hooks |
+| SYSTEM | algorithm/, hooks/, tools/, security/, regimes/, CLAUDE.md, logs/ | Auto-modified by rebuild and hooks |
 | USER | telos/, settings.json, secrets.enc, project GOALS/DECISIONS/RULES | Never auto-modified — survives upgrades |
 | MIXED | project CONTEXT.md, memory/learning/, steering-rules.md | Auto-written but user-reviewable |
 
@@ -132,6 +140,35 @@ All hooks are TypeScript, async, and fail-graceful. They communicate with Claude
 | session-end.ts | SessionEnd | <500ms |
 
 Total per-prompt overhead: under 150ms.
+
+## Governance Layer (Regimes)
+
+Cross-project governance enforcement via declarative policies. Sits between the constitutional layer (principles/rules) and the execution layer (hooks/skills).
+
+```
+┌──────────────────────────────────────────────────┐
+│  CONSTITUTIONAL    Founding Principles + Rules    │
+└──────────────────────────────────────────────────┘
+          ↓ governs
+┌──────────────────────────────────────────────────┐
+│  GOVERNANCE        Regimes (REGISTRY.yaml)        │
+│                    regime-runner.ts                │
+└──────────────────────────────────────────────────┘
+          ↓ enforced by
+┌──────────────────────────────────────────────────┐
+│  EXECUTION         Hooks + Skills + Tools         │
+└──────────────────────────────────────────────────┘
+          ↓ operates on
+┌──────────────────────────────────────────────────┐
+│  STATE             Memory + Algorithm + Secrets   │
+└──────────────────────────────────────────────────┘
+```
+
+Each regime is: REGIME.yaml (policy) + validator.ts (checker). The regime-runner reads REGISTRY.yaml, runs matching validators per trigger event, logs to audit JSONL.
+
+**10 built-in regimes:** documentation, secrets, skill-hygiene, skill-index-integrity, capabilities-manifest, data-source-registry, project-metadata, doc-integrity, memory-ownership, hook-latency.
+
+**Full specification:** `docs/regime-system.md`
 
 ## Learning Pipeline
 

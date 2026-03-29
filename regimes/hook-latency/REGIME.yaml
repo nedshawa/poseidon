@@ -1,0 +1,29 @@
+name: hook-latency
+version: "1.0"
+description: "Validate hook files against latency budget proxies — file size, handler count, import count"
+scope: all-projects
+enabled: true
+
+triggers:
+  - event: session-end
+    condition: always
+  - event: manual
+    condition: always
+
+standard:
+  hooks_dir: "hooks"
+  budgets:
+    session-start: 200
+    pre-prompt: 100
+    pre-tool: 50
+    post-response: 300
+    session-end: 500
+  max_lines_per_ms: 1.5
+  max_handler_imports: 8
+
+enforcement:
+  on_session_end: warn
+  on_manual: report
+
+audit:
+  log_path: "memory/learning/regimes/hook-latency.jsonl"

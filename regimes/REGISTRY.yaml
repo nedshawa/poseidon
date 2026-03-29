@@ -1,0 +1,70 @@
+# Poseidon Regime Registry — SINGLE SOURCE OF TRUTH
+#
+# Every governance regime must be listed here.
+# The regime-runner reads this file to discover which regimes to execute.
+# Adding a new regime: create regimes/{name}/ with REGIME.yaml + validator.ts,
+# then add an entry here.
+
+version: "1.0"
+
+regimes:
+  # ═══ ORIGINAL 3 (v1.0) ════════════════════════════════════
+
+  - name: documentation
+    path: documentation
+    enabled: true
+    description: "Enforce standard project documentation via system manifest template"
+
+  - name: secrets
+    path: secrets
+    enabled: true
+    description: "Standard secret access, registry tracking, and change logging"
+
+  - name: skill-hygiene
+    path: skill-hygiene
+    enabled: true
+    description: "Ensure skills follow template structure and quality gate"
+
+  # ═══ MIGRATION BATCH (v1.1) ════════════════════════════════
+
+  - name: skill-index-integrity
+    path: skill-index-integrity
+    enabled: true
+    description: "Validate skill-index.yaml entries match actual skill directories"
+
+  - name: capabilities-manifest
+    path: capabilities-manifest
+    enabled: true
+    description: "Validate manifest services have required secrets and consistent capabilities"
+
+  - name: data-source-registry
+    path: data-source-registry
+    enabled: true
+    description: "Validate data-sources.yaml entries are complete and cross-referenced"
+
+  - name: project-metadata
+    path: project-metadata
+    enabled: true
+    description: "Validate META.yaml fields populated, enums valid, products exist"
+
+  - name: doc-integrity
+    path: doc-integrity
+    enabled: true
+    description: "Validate documentation references, skill counts, and index completeness"
+
+  - name: memory-ownership
+    path: memory-ownership
+    enabled: true
+    description: "Enforce SYSTEM/USER/MIXED ownership boundaries in project memory"
+
+  - name: hook-latency
+    path: hook-latency
+    enabled: true
+    description: "Validate hooks stay within latency budget proxies"
+
+  # ═══ SCHEDULER (v1.2) ═══════════════════════════════════════
+
+  - name: scheduler-integrity
+    path: scheduler-integrity
+    enabled: true
+    description: "Validate scheduler job definitions, cron syntax, and documentation"

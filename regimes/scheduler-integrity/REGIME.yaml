@@ -1,0 +1,35 @@
+name: scheduler-integrity
+version: "1.0"
+description: "Validate scheduler job definitions, detect conflicts, enforce documentation"
+scope: all-projects
+enabled: true
+
+triggers:
+  - event: session-end
+    condition: algorithm-session-completed
+  - event: manual
+    condition: always
+
+standard:
+  required_fields:
+    - id
+    - name
+    - schedule
+    - type
+    - command
+    - owner
+    - purpose
+  max_timeout: 3600
+  min_timeout: 10
+  allowed_types:
+    - script
+    - skill
+    - tool
+    - webhook
+
+enforcement:
+  on_session_end: warn
+  on_manual: report
+
+audit:
+  log_path: "memory/learning/regimes/scheduler-integrity.jsonl"

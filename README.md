@@ -10,7 +10,8 @@ Personal AI infrastructure for [Claude Code](https://claude.ai/code). Poseidon g
 - **Pre-Prompt Mistake Injection** — Past mistakes injected as constraints before similar future tasks. Never make the same mistake twice.
 - **Full-Spectrum Security** — PreToolUse validation on Bash, Edit, Write, and Read. Auto-scrubs secrets from output.
 - **Multi-Channel** — Terminal + Telegram + Discord + Voice (ElevenLabs). systemd service for 24/7 availability.
-- **18 Skills** — Thinking (7 modes), Research (4 tiers), Security (4 sub-skills), Agents, Content Analysis, Documents, Browser, CLI Builder, Evals, and more.
+- **25 Skills** — Thinking (7 modes), Research (4 tiers), Security (4 sub-skills), Agents, Content Analysis, Documents, Browser, CLI Builder, Evals, and more.
+- **10 Governance Regimes** — Declarative policies enforcing documentation, secrets, skill hygiene, index integrity, capabilities, data sources, project metadata, doc integrity, memory ownership, and hook latency.
 - **Configurable Everything** — Name, personality, channels, error scope, thresholds — all via settings.json or the installer.
 
 ## Quick Install
@@ -39,7 +40,7 @@ Three modes, auto-classified:
 - **NATIVE** — Simple tasks, quick questions
 - **ALGORITHM** — Complex work via 7-phase loop (Observe → Think → Plan → Build → Execute → Verify → Learn)
 
-## Skills (18)
+## Skills (25)
 
 | Category | Skills | Highlights |
 |----------|--------|-----------|
@@ -58,23 +59,28 @@ Three modes, auto-classified:
 ├── CLAUDE.md.template        # Personality (edit this)
 ├── settings.json             # All configuration
 ├── algorithm/                # 7-phase execution loop
-├── hooks/                    # 6 lifecycle hooks + 9 handler modules
+├── regimes/                  # 10 governance regimes (Principle #23)
+│   ├── REGISTRY.yaml         # Index of all regimes
+│   ├── lib/types.ts          # Core interfaces
+│   └── {10 regime dirs}/     # REGIME.yaml + validator.ts each
+├── hooks/                    # 6 lifecycle hooks + 25 handler modules
 │   ├── handlers/
 │   │   ├── complexity-scorer.ts    # 11-signal mode classifier
+│   │   ├── regime-runner.ts        # Governance enforcement engine
 │   │   ├── error-fingerprint.ts    # Error deduplication
 │   │   ├── learning-metrics.ts     # Learning Score computation
 │   │   ├── rule-scorer.ts          # Top-5 relevance injection
 │   │   ├── mistake-injector.ts     # Past mistakes → constraints
 │   │   ├── secret-client.ts        # age encryption
-│   │   └── output-scrubber.ts      # Secret redaction
+│   │   └── ... (25 handlers total)
 │   └── lib/                        # Shared utilities
-├── skills/                   # 18 skills with workflows
+├── skills/                   # 25 skills with workflows
 ├── telos/                    # Mission, goals, projects
 ├── memory/
 │   ├── projects/             # Isolated per-project memory
 │   └── learning/             # Errors, rules, metrics, signals
 ├── security/                 # Patterns for tool validation + error classification
-└── tools/                    # CLI: init, rebuild, secret, channels, validate, learning-status
+└── tools/                    # CLI: init, rebuild, secret, channels, validate, regime-check, + 18 more
 ```
 
 ## Multi-Channel

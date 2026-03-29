@@ -1,0 +1,32 @@
+name: documentation
+version: "1.0"
+description: "Enforce standard project documentation via system manifest template"
+scope: all-projects
+enabled: true
+
+triggers:
+  - event: project-create
+    condition: always
+  - event: session-end
+    condition: algorithm-session-completed
+  - event: manual
+    condition: always
+
+standard:
+  required_files:
+    - path: "MANIFEST.md"
+      template: "template/MANIFEST.md"
+  required_sections:
+    - "Purpose"
+    - "Component Map"
+    - "Change Log"
+  freshness:
+    max_staleness_days: 14
+
+enforcement:
+  on_project_create: apply-template
+  on_session_end: warn
+  on_manual: report
+
+audit:
+  log_path: "memory/learning/regimes/documentation.jsonl"

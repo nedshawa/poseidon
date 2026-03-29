@@ -320,6 +320,24 @@ async function main() {
         }
       } catch (err) { /* mistake injection non-blocking */ }
     }
+    // Inject cached regime warnings for non-compliant projects.
+    // Warnings are generated at session-end and cached to file — never run
+    // validators on the hot path. Read-only cache check here (<5ms).
+    if (result.mode !== "MINIMAL" && project?.id) {
+      try {
+        const cachePath = poseidonPath("memory", "learning", "regimes", ".warnings-cache.json");
+        if (existsSync(cachePath)) {
+          const cache = JSON.parse(readFileSync(cachePath, "utf-8"));
+          const maxAge = 3600000; // 1 hour TTL
+          if (cache.timestamp && (Date.now() - new Date(cache.timestamp).getTime()) < maxAge) {
+            const warnings: string[] = cache.warnings || [];
+            if (warnings.length > 0) {
+              parts.push("Regime compliance warnings:\n" + warnings.join("\n"));
+            }
+          }
+        }
+      } catch {}
+    }
     // Inject secret note at the TOP if a key was detected
     if (secretNote) parts.unshift(secretNote);
     console.log(`<system-reminder>\n${parts.join("\n\n")}\n</system-reminder>`);

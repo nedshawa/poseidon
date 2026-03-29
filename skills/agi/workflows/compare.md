@@ -15,10 +15,11 @@
 - PAI Architecture: `~/.claude/PAI/PAISYSTEMARCHITECTURE.md`
 - PAI Algorithm: `~/.claude/PAI/Algorithm/v3.7.0.md`
 - Poseidon Decisions: `~/projects/poseidon/docs/decisions_poseidon_1.md`
-- Poseidon Algorithm: `~/projects/poseidon/algorithm/v1.0.md`
+- Poseidon Algorithm: `~/projects/poseidon/algorithm/v1.2.md`
+- Poseidon Regimes: `~/projects/poseidon/regimes/REGISTRY.yaml`
 - Poseidon CLAUDE.md: `~/projects/poseidon/CLAUDE.md`
 
-### The 6 Poseidon Improvements Over PAI
+### The 7 Poseidon Improvements Over PAI
 
 #### 1. Project-Centric Memory
 | Aspect | PAI | Poseidon |
@@ -64,6 +65,17 @@
 | **Gap in PAI** | Misses "how should we..." and design questions without action keywords |
 | **Learning** | No classification learning | Learns from session abandonments |
 | **Impact** | High — prevents under-classified tasks |
+
+#### 7. Regime-Based Governance (Founding Principle #23)
+| Aspect | PAI | Poseidon |
+|--------|-----|---------|
+| **Governance** | Trust-based — standards documented in CLAUDE.md but not enforced by code | 10 declarative regimes with validators, audit trails, and enforcement levels |
+| **Enforcement** | Prompt-only — relies on AI reading and following rules | Code-enforced — validators run deterministically at session-end and on-demand |
+| **Extensibility** | Adding a standard = editing CLAUDE.md prose | Adding a regime = creating a folder with REGIME.yaml + validator.ts |
+| **Audit** | No compliance tracking | JSONL audit trail per regime per project |
+| **Coverage** | N/A | documentation, secrets, skill-hygiene, skill-index-integrity, capabilities-manifest, data-source-registry, project-metadata, doc-integrity, memory-ownership, hook-latency |
+| **Gap in PAI** | Standards drift silently — no automated detection of non-compliance |
+| **Impact** | High — transforms documentation into enforcement; prevents silent infrastructure drift |
 
 ### Remaining Gaps in Both Systems
 

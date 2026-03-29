@@ -20,7 +20,7 @@ The wrapper normalizes invocation across backends. Hooks and memory work identic
 - **`poseidon.ts`** — Primary wrapper. Parses arguments, selects backend, loads project context, invokes the LLM with hooks active.
 - **`poseidon-ipc.ts`** — Inter-process communication server. Enables coordination between concurrent Poseidon sessions and background agents.
 
-## Tool Inventory (20 tools)
+## Tool Inventory (24 tools)
 
 All tools are invoked via `bun tools/{name}`. See `docs/tools-reference.md` for full descriptions.
 
@@ -29,6 +29,7 @@ All tools are invoked via `bun tools/{name}`. See `docs/tools-reference.md` for 
 | Installation | init.ts, setup.ts |
 | Configuration | rebuild.ts, secret.ts, validate.ts, wire-hooks.ts |
 | Management | learning-status.ts, mine-reflections.ts, upgrade-algorithm.ts, dashboard.ts |
+| Governance | regime-check.ts, doc-freshness.ts, manifest.ts, synthesize-learning.ts |
 | CLI Wrapper | poseidon.ts, poseidon-ipc.ts |
 | Utilities | channels.ts, onboard.ts, llm-registry.ts, port-skill.ts, banner.ts |
 | Shell | start.sh, start-systemd.sh, statusline.sh |

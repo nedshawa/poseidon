@@ -1,0 +1,43 @@
+name: project-metadata
+version: "1.0"
+description: "Validate META.yaml fields are populated, enums valid, and products exist"
+scope: all-projects
+enabled: true
+
+triggers:
+  - event: project-create
+    condition: always
+  - event: session-end
+    condition: always
+  - event: manual
+    condition: always
+
+standard:
+  required_fields:
+    - "name"
+    - "status"
+    - "created"
+  valid_statuses:
+    - "active"
+    - "paused"
+    - "complete"
+    - "archived"
+  valid_domains:
+    - "general"
+    - "finance"
+    - "security"
+    - "tech"
+    - "content"
+    - "creative"
+    - "personal"
+    - "development"
+    - "data"
+  index_file: "skills/skill-index.yaml"
+
+enforcement:
+  on_project_create: warn
+  on_session_end: warn
+  on_manual: report
+
+audit:
+  log_path: "memory/learning/regimes/project-metadata.jsonl"

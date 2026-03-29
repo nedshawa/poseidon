@@ -1,0 +1,29 @@
+# scheduler.yaml — Scheduled jobs for this project
+#
+# Define recurring tasks here. Each job goes through the scheduler's
+# validation pipeline before activation:
+#   DEFINE → VALIDATE → GENERATE → ENABLE
+#
+# Required fields: id, name, schedule, type, command, owner, purpose
+# Full schema: docs/scheduler-system.md
+#
+# Example:
+#   jobs:
+#     - id: daily-refresh
+#       name: "Daily Data Refresh"
+#       enabled: true
+#       schedule: "0 6 * * *"
+#       timezone: "UTC"
+#       type: script
+#       command: "bun scripts/refresh.ts"
+#       owner: "your-name"
+#       purpose: "Refresh data before daily analysis"
+#       timeout: 300
+#       retry:
+#         max_attempts: 3
+#         backoff: exponential
+#         initial_delay: 30
+#       on_failure: notify
+
+version: "1.0"
+jobs: []

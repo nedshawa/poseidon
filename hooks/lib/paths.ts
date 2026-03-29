@@ -40,3 +40,6 @@ export const SECURITY_DIR = () => poseidonPath("security");
 export const LOGS_DIR = () => poseidonPath("logs");
 export const SKILLS_DIR = () => poseidonPath("skills");
 export const HOOKS_DIR = () => poseidonPath("hooks");
+export const SCHEDULER_DIR = () => poseidonPath("scheduler");
+export const SCHEDULER_STATE_DIR = () => poseidonPath("scheduler", "state");
+export const SCHEDULER_LOGS_DIR = () => poseidonPath("logs", "scheduler");

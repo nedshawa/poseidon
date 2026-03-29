@@ -44,6 +44,15 @@ All tools live in `~/.poseidon/tools/` and are invoked with `bun tools/{name}`. 
 | `port-skill.ts` | Ports a skill from PAI format to Poseidon format. Adapts paths, naming conventions, and handler references. |
 | `banner.ts` | Prints the Poseidon ASCII banner with version, active project, and system status. |
 
+## Governance
+
+| Tool | Description |
+|------|-------------|
+| `regime-check.ts` | On-demand regime compliance checker. Runs all enabled regimes against all projects. Supports --regime, --project, --json flags. |
+| `doc-freshness.ts` | Checks documentation freshness and generates version bumps + CHANGELOG entries. |
+| `manifest.ts` | Manages poseidon-manifest.yaml — enable/disable services, check consistency. |
+| `synthesize-learning.ts` | Aggregates weekly learning patterns from failure dumps and rule effectiveness. |
+
 ## Shell Scripts
 
 | Script | Description |

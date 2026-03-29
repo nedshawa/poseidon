@@ -1,0 +1,32 @@
+name: skill-hygiene
+version: "1.0"
+description: "Ensure skills follow template structure and quality gate"
+scope: all-projects
+enabled: true
+
+triggers:
+  - event: session-end
+    condition: skill-files-modified
+  - event: manual
+    condition: always
+
+standard:
+  skill_dir: "skills"
+  max_skill_lines: 500
+  max_nesting_depth: 2
+  required_yaml_fields:
+    - "name"
+    - "description"
+  required_sections:
+    - "USE WHEN"
+    - "NOT for"
+    - "Examples"
+    - "Workflow Routing"
+  naming_pattern: "^[a-z][a-z0-9-]*$"
+
+enforcement:
+  on_session_end: warn
+  on_manual: report
+
+audit:
+  log_path: "memory/learning/regimes/skill-hygiene.jsonl"

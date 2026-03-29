@@ -1,0 +1,22 @@
+name: doc-integrity
+version: "1.0"
+description: "Validate documentation references, skill counts, and index completeness"
+scope: all-projects
+enabled: true
+
+triggers:
+  - event: session-end
+    condition: always
+  - event: manual
+    condition: always
+
+standard:
+  docs_dir: "docs"
+  index_file: "docs/index.md"
+
+enforcement:
+  on_session_end: warn
+  on_manual: report
+
+audit:
+  log_path: "memory/learning/regimes/doc-integrity.jsonl"
