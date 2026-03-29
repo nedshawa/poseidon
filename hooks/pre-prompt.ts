@@ -9,6 +9,7 @@ import { scoreComplexity, stripModeFlag } from "./handlers/complexity-scorer";
 import type { ComplexityResult } from "./handlers/complexity-scorer";
 import { getRelevantMistakes } from "./handlers/mistake-injector";
 import { generateSessionName, saveSessionName } from "./handlers/session-auto-name";
+import { setProcessing, isKittyAvailable } from "./handlers/terminal-state";
 
 function loadSettings(): any {
   try { const p = getSettingsPath(); return existsSync(p) ? JSON.parse(readFileSync(p, "utf-8")) : {}; } catch { return {}; }
@@ -233,6 +234,12 @@ async function main() {
     const input = await readHookInput();
     const rawPrompt = input.prompt || "";
     if (!rawPrompt.trim()) return;
+
+    // Terminal state: set processing (purple tab)
+    try {
+      const sessionId = (input as any)?.session_id;
+      setProcessing("Processing...", sessionId);
+    } catch {}
 
     // Auto-name session on first prompt
     try {

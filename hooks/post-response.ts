@@ -235,6 +235,12 @@ async function main() {
       }
     } catch {}
 
+    // --- Terminal state: set done (green tab) ---
+    try {
+      const { setDone } = require("./handlers/terminal-state");
+      setDone("Response complete", (input as any)?.session_id);
+    } catch {}
+
     console.error(`\u2699 Stop \u2502 sentiment: neutral${contextUpdated ? " \u2502 project CONTEXT.md updated" : ""}`);
   } catch (err) {
     console.error(`\u2699 Stop \u2502 error: ${err}`);

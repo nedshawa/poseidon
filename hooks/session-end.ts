@@ -378,6 +378,12 @@ async function main() {
       driftSignals = 0; // Drift detection available but needs assistant message parsing
     } catch {}
 
+    // --- Reset terminal tab (Kitty) ---
+    try {
+      const { resetTab } = require("./handlers/terminal-state");
+      resetTab();
+    } catch {}
+
     // --- Consolidated status output ---
     const parts = [`${totalCandidates} rule candidates`];
     if (claudeRebuilt) parts.push("CLAUDE.md rebuilt");
