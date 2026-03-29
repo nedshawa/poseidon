@@ -15,7 +15,8 @@
 - [Learning System](learning-system.md) — Detection, fingerprinting, rules, injection, synthesis
 
 ## Operations
-- [CLI Architecture](cli-architecture.md) — poseidon.ts wrapper, 16 CLI tools, LLM-agnostic
+- [CLI Architecture](cli-architecture.md) — poseidon.ts wrapper, 21 CLI tools, LLM-agnostic
+- [Workflow Index](workflow-index.md) — Catalogue of all 207 workflows across skills
 - [Delegation & Parallelization](delegation-system.md) — Model selection, agent patterns, spotcheck
 - [Tools Reference](tools-reference.md) — All CLI tools with usage
 - [PRD Format](prd-format.md) — PRD.md specification, ISC format, continuation rules

@@ -53,8 +53,10 @@ Response to User
 ├── secrets.enc            # age-encrypted secrets
 │
 ├── algorithm/             # The 7-phase execution loop
-│   ├── v1.0.md            # Current algorithm version
-│   └── LATEST -> v1.0.md  # Symlink to active version
+│   ├── v1.0.md            # Original version
+│   ├── v1.1.md            # Production hardened
+│   ├── v1.2.md            # ISC decomposition + visual feedback
+│   └── LATEST -> v1.2.md  # Symlink to active version
 │
 ├── hooks/                 # TypeScript lifecycle handlers
 │   ├── session-start.ts   # SessionStart event

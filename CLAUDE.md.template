@@ -111,7 +111,7 @@ When performing analysis, mark the stage:
 ## Universal vs Project-Scoped (CRITICAL)
 
 ### Universal (ALWAYS available, every project)
-- **Algorithm**, **Skills** (25+), **Hooks** (5+15 handlers), **Secrets**, **Rules**, **TELOS**, **Agents**
+- **Algorithm** (v1.2), **Skills** (25 skills, 64 SKILL.md, 207 workflows), **Hooks** (6 hooks + 20 handlers), **Secrets**, **Rules** (18), **TELOS**, **Agents** (5 named)
 - **Research** — 4-tier, **Thinking** — 7 modes, **Security** — full-tool coverage
 - **Docs** — `docs/context-routing.md` for topic→path lookup
 

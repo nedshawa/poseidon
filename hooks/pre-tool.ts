@@ -10,6 +10,7 @@ import { homedir } from "os";
 import { poseidonPath, SECURITY_DIR, LOGS_DIR } from "./lib/paths";
 import { guardAgentExecution } from "./handlers/agent-guard";
 import { guardSkillExecution } from "./handlers/skill-guard";
+import { logSecurityEvent } from "./handlers/security-audit";
 
 interface PatternRule { pattern: string; reason: string; }
 interface SecurityPatterns {
@@ -63,6 +64,9 @@ function log(level: string, tool: string, detail: string): void {
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     const entry = JSON.stringify({ ts: new Date().toISOString(), level, tool, detail });
     appendFileSync(join(dir, "security.jsonl"), entry + "\n");
+    // Also log to security audit trail
+    const action = level === "BLOCKED" ? "blocked" : level === "CONFIRM" ? "confirmed" : "allowed";
+    logSecurityEvent({ type: "preToolUse", tool, detail, action: action as any });
   } catch { /* logging must never block */ }
 }
 

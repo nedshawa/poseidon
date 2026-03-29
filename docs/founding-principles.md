@@ -52,7 +52,7 @@ Define expected behavior before writing implementation. Write test before implem
 
 Do one thing well. Compose tools through standard interfaces.
 
-**Poseidon implementation:** 16 CLI tools, each single-purpose. port-skill.ts converts packs. mine-reflections.ts extracts patterns. upgrade-algorithm.ts manages versions. Each tool works independently, composes via shell pipelines.
+**Poseidon implementation:** 21 CLI tools, each single-purpose. port-skill.ts converts packs. mine-reflections.ts extracts patterns. upgrade-algorithm.ts manages versions. synthesize-learning.ts aggregates weekly patterns. Each tool works independently, composes via shell pipelines.
 
 ## 9. ENG / SRE Principles
 
@@ -76,7 +76,7 @@ The proper development pipeline. Each layer builds on the previous. Skip a layer
 
 Skills are the organizational unit for all domain expertise. Self-activating, self-contained, composable, evolvable.
 
-**Poseidon implementation:** 25 skills with 63 SKILL.md files, 207 workflows. agentskills.io-compliant structure. Quality gate: 9-point checklist. Dynamic loading pattern. Canonicalization workflow. Full spec in docs/skillsystem.md.
+**Poseidon implementation:** 25 skills with 64 SKILL.md files, 207 workflows, 20 handlers. agentskills.io-compliant structure. Quality gate: 9-point checklist. Dynamic loading pattern. Canonicalization workflow. Full spec in docs/skillsystem.md.
 
 ## 13. Custom Memory System
 
