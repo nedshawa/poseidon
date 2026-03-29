@@ -6,6 +6,12 @@ tags: []
 last_used: ""
 domain: general  # general, finance, security, tech, content, creative, personal, development, data
 
+# Product skills to load for this project (explicit request only)
+# Only skills listed here will be loaded as project-matched.
+# Universal skills are always available. Universal dependencies load automatically.
+# products: [telos, us-metrics, media, scraping, utilities, cli-builder, investigation]
+products: []
+
 # Research configuration (optional — defaults to global settings if not set)
 # research_default: standard  # quick | standard | extensive | deep
 # preferred_sources: []       # perplexity, claude, gemini, grok (empty = use all)

@@ -1,83 +1,101 @@
 #!/usr/bin/env bun
 /**
- * skill-discovery.ts — 3-tier skill taxonomy with relevance scoring
+ * skill-discovery.ts — 3-tier skill taxonomy with explicit matching
  *
- * Reads skill-index.yaml + project domain → returns priority-ordered
- * skill recommendations. Faster than directory scanning because it
- * uses pre-computed index with domain filtering.
+ * Two matches only:
+ *   1. UNIVERSAL MATCH — skill is universal, or a product skill that a universal
+ *      skill depends on (requires: [skill-name])
+ *   2. PROJECT MATCH — project explicitly lists the product skill in META.yaml
+ *      products: [skill-name]
  *
- * Tiers:
- *   universal  — always available, every project
- *   product    — available when project domain matches
- *   project    — in memory/projects/{id}/skills/ (project-created)
+ * No implicit domain matching. Loading is predictable — you always know
+ * WHY a skill was loaded.
  *
  * @author Poseidon System
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 import { readFileSync, existsSync, readdirSync, statSync } from "fs";
-import { join, dirname } from "path";
+import { join } from "path";
 import { poseidonPath, PROJECTS_DIR, SKILLS_DIR } from "../lib/paths";
 
 export interface SkillEntry {
   name: string;
   tier: "universal" | "product" | "project";
-  domains: string[];
   priority: number;
+  requires: string[];
   description: string;
-  source: string; // "global" or project name
+  match_reason: string; // WHY this skill was loaded
 }
 
 export interface SkillDiscoveryResult {
   project: string;
-  domain: string;
   universal: SkillEntry[];
-  product: SkillEntry[];
-  project_skills: SkillEntry[];
-  total: number;
-  recommended_order: string[]; // names sorted by relevance
+  universal_deps: SkillEntry[];   // product skills loaded via dependency
+  project_requested: SkillEntry[]; // product skills explicitly requested
+  project_skills: SkillEntry[];    // skills in project's own skills/ dir
+  unloaded: string[];              // product skills NOT loaded (for transparency)
+  total_loaded: number;
+  recommended_order: string[];
 }
 
-/**
- * Load the skill index from skill-index.yaml
- */
-function loadSkillIndex(): SkillEntry[] {
+// ── Index Loading ────────────────────────────────────────────
+
+interface RawSkillEntry {
+  name: string;
+  tier: string;
+  priority: number;
+  requires: string[];
+  description: string;
+}
+
+function loadSkillIndex(): RawSkillEntry[] {
   const indexPath = join(SKILLS_DIR(), "skill-index.yaml");
   if (!existsSync(indexPath)) return [];
 
   try {
     const content = readFileSync(indexPath, "utf-8");
-    const entries: SkillEntry[] = [];
+    const entries: RawSkillEntry[] = [];
+    let current: Partial<RawSkillEntry> = {};
 
-    // Simple YAML list parser for our structure
-    let current: Partial<SkillEntry> = {};
     for (const line of content.split("\n")) {
       const trimmed = line.trim();
       if (trimmed.startsWith("- name:")) {
-        if (current.name) entries.push({ ...current, source: "global" } as SkillEntry);
-        current = { name: trimmed.replace("- name:", "").trim() };
+        if (current.name) entries.push(current as RawSkillEntry);
+        current = { name: trimmed.replace("- name:", "").trim(), requires: [] };
       } else if (trimmed.startsWith("tier:")) {
-        current.tier = trimmed.replace("tier:", "").trim() as any;
-      } else if (trimmed.startsWith("domains:")) {
-        const domainsStr = trimmed.replace("domains:", "").trim();
-        current.domains = domainsStr.replace(/[\[\]]/g, "").split(",").map(d => d.trim());
+        current.tier = trimmed.replace("tier:", "").trim();
       } else if (trimmed.startsWith("priority:")) {
         current.priority = parseInt(trimmed.replace("priority:", "").trim());
+      } else if (trimmed.startsWith("requires:")) {
+        const val = trimmed.replace("requires:", "").trim();
+        current.requires = val.replace(/[\[\]]/g, "").split(",").map(s => s.trim()).filter(Boolean);
       } else if (trimmed.startsWith("description:")) {
         current.description = trimmed.replace("description:", "").trim().replace(/^"|"$/g, "");
       }
     }
-    if (current.name) entries.push({ ...current, source: "global" } as SkillEntry);
-
+    if (current.name) entries.push(current as RawSkillEntry);
     return entries;
   } catch {
     return [];
   }
 }
 
-/**
- * Load project-specific skills from memory/projects/{id}/skills/
- */
+// ── Project Config ───────────────────────────────────────────
+
+function getProjectProducts(projectId: string): string[] {
+  try {
+    const metaPath = join(PROJECTS_DIR(), projectId, "META.yaml");
+    if (!existsSync(metaPath)) return [];
+    const content = readFileSync(metaPath, "utf-8");
+    const match = content.match(/products:\s*\[([^\]]*)\]/);
+    if (!match) return [];
+    return match[1].split(",").map(s => s.trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 function loadProjectSkills(projectId: string): SkillEntry[] {
   const projectSkillsDir = join(PROJECTS_DIR(), projectId, "skills");
   if (!existsSync(projectSkillsDir)) return [];
@@ -85,116 +103,151 @@ function loadProjectSkills(projectId: string): SkillEntry[] {
   const entries: SkillEntry[] = [];
   try {
     for (const dir of readdirSync(projectSkillsDir)) {
+      if (dir.startsWith(".")) continue;
       const skillDir = join(projectSkillsDir, dir);
       const skillMd = join(skillDir, "SKILL.md");
-      if (!statSync(skillDir).isDirectory() || !existsSync(skillMd)) continue;
+      if (!existsSync(skillDir) || !statSync(skillDir).isDirectory()) continue;
+      if (!existsSync(skillMd)) continue;
 
-      // Read SKILL.md frontmatter for description
       const content = readFileSync(skillMd, "utf-8");
       const descMatch = content.match(/description:\s*>?-?\s*\n?\s*(.*?)(?:\n---|$)/s);
-      const desc = descMatch ? descMatch[1].trim().substring(0, 100) : dir;
-
       entries.push({
         name: dir,
         tier: "project",
-        domains: [projectId],
-        priority: 100, // Project skills always highest priority for their project
-        description: desc,
-        source: projectId,
+        priority: 100,
+        requires: [],
+        description: descMatch ? descMatch[1].trim().substring(0, 80) : dir,
+        match_reason: "project-local skill",
       });
     }
   } catch {}
-
   return entries;
 }
 
-/**
- * Get project domain from META.yaml
- */
-function getProjectDomain(projectId: string): string {
-  try {
-    const metaPath = join(PROJECTS_DIR(), projectId, "META.yaml");
-    if (!existsSync(metaPath)) return "general";
-    const content = readFileSync(metaPath, "utf-8");
-    const match = content.match(/domain:\s*"?(\S+)"?/);
-    return match ? match[1] : "general";
-  } catch {
-    return "general";
-  }
-}
+// ── Discovery Engine ─────────────────────────────────────────
 
-/**
- * Discover skills for a project, scored and ordered by relevance.
- */
 export function discoverSkills(projectId: string): SkillDiscoveryResult {
-  const domain = getProjectDomain(projectId);
   const index = loadSkillIndex();
+  const requestedProducts = getProjectProducts(projectId);
   const projectSkills = loadProjectSkills(projectId);
 
-  // Split by tier
-  const universal = index.filter(s => s.tier === "universal");
-  const product = index.filter(s => {
-    if (s.tier !== "product") return false;
-    // Match if project domain is in skill's domains, or skill has "all"
-    return s.domains.includes("all") || s.domains.includes(domain);
-  });
+  // Step 1: Universal skills (always loaded)
+  const universal: SkillEntry[] = index
+    .filter(s => s.tier === "universal")
+    .map(s => ({ ...s, match_reason: "universal — always available" }));
 
-  // Combine and sort by priority (highest first)
-  const all = [...projectSkills, ...universal, ...product].sort((a, b) => b.priority - a.priority);
+  // Step 2: Resolve universal dependencies → product skills loaded as deps
+  const depNames = new Set<string>();
+  for (const skill of universal) {
+    for (const dep of skill.requires) {
+      depNames.add(dep);
+    }
+  }
+
+  const universalDeps: SkillEntry[] = index
+    .filter(s => s.tier === "product" && depNames.has(s.name))
+    .map(s => {
+      const dependedBy = universal.filter(u => u.requires.includes(s.name)).map(u => u.name);
+      return {
+        ...s,
+        match_reason: `universal-dep — required by: ${dependedBy.join(", ")}`,
+      };
+    });
+
+  // Step 3: Project-requested product skills
+  const alreadyLoaded = new Set([
+    ...universal.map(s => s.name),
+    ...universalDeps.map(s => s.name),
+  ]);
+
+  const projectRequested: SkillEntry[] = index
+    .filter(s => s.tier === "product" && requestedProducts.includes(s.name) && !alreadyLoaded.has(s.name))
+    .map(s => ({ ...s, match_reason: `project-requested — in META.yaml products[]` }));
+
+  // Step 4: Identify unloaded product skills (transparency)
+  const loadedNames = new Set([
+    ...universal.map(s => s.name),
+    ...universalDeps.map(s => s.name),
+    ...projectRequested.map(s => s.name),
+    ...projectSkills.map(s => s.name),
+  ]);
+
+  const unloaded = index
+    .filter(s => s.tier === "product" && !loadedNames.has(s.name))
+    .map(s => s.name);
+
+  // Combine and sort by priority
+  const all = [...projectSkills, ...universal, ...universalDeps, ...projectRequested]
+    .sort((a, b) => b.priority - a.priority);
 
   return {
     project: projectId,
-    domain,
     universal,
-    product,
+    universal_deps: universalDeps,
+    project_requested: projectRequested,
     project_skills: projectSkills,
-    total: all.length,
+    unloaded,
+    total_loaded: all.length,
     recommended_order: all.map(s => s.name),
   };
 }
 
-/**
- * Format skill discovery for system-reminder injection.
- * Shows categorized, priority-ordered skills to guide Claude's selection.
- */
+// ── Formatting ───────────────────────────────────────────────
+
 export function formatSkillDiscovery(result: SkillDiscoveryResult): string {
-  if (result.total === 0) return "";
+  if (result.total_loaded === 0) return "";
 
   const lines: string[] = [
-    `## Skill Discovery (${result.project}, domain: ${result.domain})`,
+    `## Skill Discovery (${result.project})`,
     "",
   ];
 
   // Project skills (highest priority)
   if (result.project_skills.length > 0) {
-    lines.push("**Project Skills** (this project only, highest priority):");
+    lines.push("**🔷 Project Skills** (this project only, priority 100):");
     for (const s of result.project_skills) {
       lines.push(`  - **${s.name}** — ${s.description}`);
     }
     lines.push("");
   }
 
-  // Universal (always available)
-  lines.push(`**Universal Skills** (${result.universal.length}, always available):`);
-  const topUniversal = result.universal.slice(0, 10);
-  for (const s of topUniversal) {
+  // Universal
+  lines.push(`**🔵 Universal** (${result.universal.length} skills, always available):`);
+  const top = result.universal.sort((a, b) => b.priority - a.priority).slice(0, 8);
+  for (const s of top) {
     lines.push(`  - **${s.name}** (p:${s.priority}) — ${s.description}`);
   }
-  if (result.universal.length > 10) {
-    lines.push(`  - ... and ${result.universal.length - 10} more`);
+  if (result.universal.length > 8) {
+    lines.push(`  - ... and ${result.universal.length - 8} more universal skills`);
   }
   lines.push("");
 
-  // Product-specific (domain matched)
-  if (result.product.length > 0) {
-    lines.push(`**Domain Skills** (matched: ${result.domain}):`);
-    for (const s of result.product) {
+  // Universal dependencies (product skills loaded because universal needs them)
+  if (result.universal_deps.length > 0) {
+    lines.push("**🟡 Universal Dependencies** (product skills loaded by dependency):");
+    for (const s of result.universal_deps) {
+      lines.push(`  - **${s.name}** — ${s.match_reason}`);
+    }
+    lines.push("");
+  }
+
+  // Project-requested product skills
+  if (result.project_requested.length > 0) {
+    lines.push("**🟢 Project-Requested** (explicitly in META.yaml products[]):");
+    for (const s of result.project_requested) {
       lines.push(`  - **${s.name}** (p:${s.priority}) — ${s.description}`);
     }
     lines.push("");
   }
 
-  lines.push(`**Recommended order** (top 5): ${result.recommended_order.slice(0, 5).join(", ")}`);
+  // Unloaded (transparency — user knows what's available but not loaded)
+  if (result.unloaded.length > 0) {
+    lines.push(`**⚪ Available but not loaded** (add to META.yaml products[] to enable):`);
+    lines.push(`  ${result.unloaded.join(", ")}`);
+    lines.push("");
+  }
+
+  lines.push(`**Total loaded:** ${result.total_loaded} | **Top 5:** ${result.recommended_order.slice(0, 5).join(", ")}`);
 
   return lines.join("\n");
 }

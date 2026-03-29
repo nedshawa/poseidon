@@ -1,166 +1,169 @@
-# Poseidon Skill Index
-# Maps every skill to its tier, domain tags, and relevance scoring.
+# Poseidon Skill Index v2.0
 #
-# Tiers:
-#   universal   — always available, auto-activated for every project
-#   product     — available when project domain matches (finance, security, content, etc.)
-#   project     — created by and for a specific project (in memory/projects/{id}/skills/)
+# 3-tier taxonomy with explicit matching:
 #
-# This file is read by session-start to inject priority-ordered skill context.
-# Claude Code still scans the full skills/ directory — this index GUIDES selection,
-# it doesn't restrict access.
+# UNIVERSAL  — always loaded, every project. No configuration needed.
+# PRODUCT    — loaded ONLY when:
+#              a) A universal skill depends on it (requires: [skill-name])
+#              b) The project explicitly requests it (META.yaml products: [skill-name])
+# PROJECT    — created by/for a specific project (in memory/projects/{id}/skills/)
+#
+# No implicit domain matching. Product skills require explicit request.
+# This makes skill loading PREDICTABLE — you always know why a skill loaded.
 
-version: "1.0"
+version: "2.0"
 
 skills:
-  # ─── UNIVERSAL (always relevant, every project) ───
+  # ─── UNIVERSAL (always loaded, every project) ───────────────
   - name: research
     tier: universal
-    domains: [all]
     priority: 95
+    requires: []
     description: "Multi-agent research with 4 tiers"
 
   - name: thinking
     tier: universal
-    domains: [all]
     priority: 95
+    requires: []
     description: "7 analytical and creative thinking modes"
 
   - name: security
     tier: universal
-    domains: [all]
     priority: 90
+    requires: [investigation]
     description: "Security assessment, prompt injection testing"
 
   - name: agents
     tier: universal
-    domains: [all]
     priority: 90
+    requires: []
     description: "Custom agent composition from traits"
 
   - name: commit
     tier: universal
-    domains: [all]
     priority: 85
+    requires: []
     description: "Git commit workflows"
 
   - name: debug
     tier: universal
-    domains: [all]
     priority: 85
+    requires: []
     description: "Debugging workflows"
 
   - name: test
     tier: universal
-    domains: [all]
     priority: 85
+    requires: []
     description: "Test writing and execution"
 
   - name: code-review
     tier: universal
-    domains: [all]
     priority: 80
+    requires: []
     description: "Code review workflows"
 
   - name: refactor
     tier: universal
-    domains: [all]
     priority: 80
+    requires: []
     description: "Code refactoring patterns"
 
   - name: deploy
     tier: universal
-    domains: [all]
     priority: 75
+    requires: []
     description: "Deployment workflows"
 
   - name: skill-builder
     tier: universal
-    domains: [all]
     priority: 70
+    requires: []
     description: "Create, validate, canonicalize skills"
 
   - name: project-init
     tier: universal
-    domains: [all]
     priority: 70
+    requires: []
     description: "Initialize new projects"
 
   - name: evals
     tier: universal
-    domains: [all]
     priority: 65
+    requires: []
     description: "Evaluation and benchmarking"
 
   - name: content-analysis
     tier: universal
-    domains: [all]
     priority: 65
+    requires: []
     description: "Content extraction and analysis"
 
   - name: context-search
     tier: universal
-    domains: [all]
     priority: 60
+    requires: []
     description: "Search across Poseidon context"
 
   - name: documents
     tier: universal
-    domains: [all]
     priority: 60
-    description: "Document processing (PDF, DOCX, etc.)"
+    requires: [media]
+    description: "Document processing (PDF, DOCX, etc.) — needs media for visuals"
 
   - name: browser
     tier: universal
-    domains: [all]
     priority: 55
+    requires: []
     description: "Browser automation and screenshots"
 
   - name: agi
     tier: universal
-    domains: [all]
     priority: 50
+    requires: []
     description: "AI system architecture audit and comparison"
 
-  # ─── PRODUCT-SPECIFIC (relevant when domain matches) ───
+  # ─── PRODUCT (loaded only by dependency or explicit request) ─
   - name: telos
     tier: product
-    domains: [personal, goals, planning]
     priority: 80
+    requires: []
     description: "Life goals, projects, beliefs, wisdom"
 
   - name: us-metrics
     tier: product
-    domains: [finance, economics, markets]
     priority: 75
+    requires: []
     description: "US economic indicators from FRED, BLS, etc."
 
   - name: media
     tier: product
-    domains: [content, creative, design, marketing]
     priority: 75
+    requires: []
     description: "Visual content creation, diagrams, video"
+    # Auto-loaded because universal 'documents' requires it
 
   - name: investigation
     tier: product
-    domains: [security, osint, due-diligence, research]
     priority: 70
+    requires: []
     description: "OSINT, company intel, people search"
+    # Auto-loaded because universal 'security' requires it
 
   - name: scraping
     tier: product
-    domains: [data, content, research, marketing]
     priority: 65
+    requires: []
     description: "Web scraping via Bright Data and Apify"
 
   - name: utilities
     tier: product
-    domains: [development, infrastructure, devops]
     priority: 60
+    requires: []
     description: "CLI generation, Fabric, Cloudflare, parsing"
 
   - name: cli-builder
     tier: product
-    domains: [development, infrastructure, devops]
     priority: 55
+    requires: []
     description: "Create CLI tools from APIs"
