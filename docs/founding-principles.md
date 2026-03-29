@@ -121,6 +121,20 @@ Skills load through exactly two paths — universal match and project match. Nev
 
 **Poseidon implementation:** `skills/skill-index.yaml` maps every skill to tier, priority, and dependencies. `hooks/handlers/skill-discovery.ts` resolves the two matches. Session-start injects the discovery result into system-reminder so the AI knows exactly which skills are loaded and why.
 
+## 19. Visual Transparency (Poseidon-Only)
+
+Every significant action is announced visually to the user. Research launches show which agents are running with branded icons. Thinking modes announce which mode is active. Agent deployments show who is deployed and why. Analysis stages show progression. Progress bars show ISC criteria completion.
+
+**Why transparency matters:** The user is the principal who delegates work. Delegation without visibility is abdication. The user has a RIGHT to see what is happening, which agents are working, what sources are being used, and how progress is tracking. Silent operations erode trust.
+
+**Poseidon implementation:** Visual feedback templates in CLAUDE.md.template. Brand icon library in `hooks/lib/brand-icons.ts`. Phase transition headers with emoji in algorithm/v1.2.md.
+
+## 20. Skill Preferences as Project Adverbs (Poseidon-Only)
+
+Skills are verbs (HOW to do things). Projects are nouns (WHAT we're working on). Preferences are adverbs (HOW THIS PROJECT wants skills to behave). You don't create a new skill for "finance research" — you take the universal "research" skill and customize it with preferences ("use extensive mode, prefer Perplexity + Gemini, domain: finance"). The skill stays universal. The behavior adapts per project.
+
+**Poseidon implementation:** `preferences/*.yaml` per project. Loaded by `preferences-loader.ts` at session start. Injected into system-reminder so skills adapt.
+
 ---
 
-*These principles are the constitutional foundation of Poseidon. All architectural decisions, skill designs, and system behaviors should trace back to one or more of these principles.*
+*These 20 principles are the constitutional foundation of Poseidon. All architectural decisions, skill designs, and system behaviors should trace back to one or more of these principles.*
